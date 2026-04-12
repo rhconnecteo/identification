@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVud392aGFasb6RMYgSMpX0-oBBoBYiRSbNMbIqCj2VUiQy87RiG4T06wM_jyLEwpckw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8NtgSBb0JUSqcULhHnvvbdn178da2sE2J0YW0Khyi8Gfpf-eGFRY8D3E1oQ9sSDbz-g/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -105,7 +105,6 @@ const IdentificationForm = () => {
            formData.dateDelivrance &&
            formData.lieuDelivrance &&
            formData.contactPersonnel &&
-           formData.numeroMvola &&
            formData.nomPersonneUrgence &&
            formData.numeroUrgence;
   };
@@ -127,7 +126,6 @@ const IdentificationForm = () => {
 
   const isContactInfoComplete = () => {
     return formData.contactPersonnel &&
-           formData.numeroMvola &&
            formData.nomPersonneUrgence &&
            formData.numeroUrgence;
   };
@@ -278,8 +276,6 @@ const IdentificationForm = () => {
     if (!formData.dateDelivrance) newErrors.dateDelivrance = 'Date de délivrance obligatoire';
     if (!formData.lieuDelivrance) newErrors.lieuDelivrance = 'Lieu de délivrance obligatoire';
     if (!formData.contactPersonnel) newErrors.contactPersonnel = 'Contact obligatoire';
-    if (!formData.numeroMvola) newErrors.numeroMvola = 'Mvola obligatoire';
-    else if (!/^34/.test(formData.numeroMvola)) newErrors.numeroMvola = 'Commence par 34';
     if (!formData.nomPersonneUrgence) newErrors.nomPersonneUrgence = 'Nom obligatoire';
     if (!formData.numeroUrgence) newErrors.numeroUrgence = 'Numéro obligatoire';
     if (!formData.emailPersonnel) newErrors.emailPersonnel = 'Email obligatoire';
@@ -360,6 +356,20 @@ const IdentificationForm = () => {
     }));
   };
 
+  const removeDiplome = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      diplomes: prev.diplomes.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeLangue = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      langues: prev.langues.filter((_, i) => i !== index)
+    }));
+  };
+
   const isLanguesInfoComplete = () => {
     return formData.langues && formData.langues.length > 0 &&
            formData.langues.some(l => l.nom && l.niveau);
@@ -385,6 +395,7 @@ const IdentificationForm = () => {
         'Genre': formData.genre,
         'Date de naissance': formData.dateNaissance,
         'Lieu de naissance': formData.lieuNaissance,
+        'Adresse': formData.adresse,
         'Numéro CIN': formData.numeroCIN,
         'Date de délivrance': formData.dateDelivrance,
         'Lieu de délivrance': formData.lieuDelivrance,
@@ -415,10 +426,11 @@ const IdentificationForm = () => {
         'Nom enfant 8': formData.enfants[7]?.nom || '',
         'date de naissance 8': formData.enfants[7]?.dateNaissance || '',
         'Nom enfant 9': formData.enfants[8]?.nom || '',
+        'date de naissance 9': formData.enfants[8]?.dateNaissance || '',
         'Numéro Cnaps': formData.numeroCnaps,
         'Vaccin COVID 19': formData.vaccin,
         'Diplomes obtenues 1': formData.diplomes[0]?.nom || '',
-        'Domaine d\'étude 1': formData.diplomes[0]?.nom === 'BAC' ? '' : (formData.diplomes[0]?.domaine || ''),
+        'Domaine d\'étude 1': formData.diplomes[0]?.domaine || '',
         'Diplomes obtenues 2': formData.diplomes[1]?.nom || '',
         'Domaine d\'étude 2': formData.diplomes[1]?.domaine || '',
         'Diplomes obtenues 3': formData.diplomes[2]?.nom || '',
@@ -440,7 +452,11 @@ const IdentificationForm = () => {
       await fetch(url, { method: 'GET', mode: 'no-cors' });
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      setMessage('✓ Données enregistrées avec succès!');
+      // Envoyer l'email au collaborateur
+      const emailUrl = `${SCRIPT_URL}?action=sendEmail&data=${encodeURIComponent(JSON.stringify(dataToSend))}`;
+      fetch(emailUrl, { method: 'GET', mode: 'no-cors' }).catch(err => console.log('Email envoyé (JSONP)', err));
+
+      setMessage('✓ Données enregistrées avec succès! Email envoyé au collaborateur.');
 
       setFormData({
         dateInsertion: new Date().toISOString().split('T')[0],
@@ -547,7 +563,7 @@ const IdentificationForm = () => {
             <div className="tab-content">
               <div className="form-row">
                 <FormField label="Contact personnel" name="contactPersonnel" value={formData.contactPersonnel} onChange={handleInputChange} error={errors.contactPersonnel} required />
-                <FormField label="Numéro Mvola" name="numeroMvola" value={formData.numeroMvola} onChange={handleInputChange} error={errors.numeroMvola} required />
+                <FormField label="Numéro Mvola" name="numeroMvola" value={formData.numeroMvola} onChange={handleInputChange} error={errors.numeroMvola} />
               </div>
               <FormField label="Email personnel" name="emailPersonnel" type="email" value={formData.emailPersonnel} onChange={handleInputChange} error={errors.emailPersonnel} required />
               <div className="emergency-section">
@@ -605,7 +621,12 @@ const IdentificationForm = () => {
               <h3>📚 Diplômes Obtenus (Max 3 avec domaines)</h3>
               {formData.diplomes.map((diplome, index) => (
                 <div key={index} className="diploma-card">
-                  <h4>Diplôme {index + 1}</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0 }}>Diplôme {index + 1}</h4>
+                    {formData.diplomes.length > 1 && (
+                      <button type="button" className="btn-remove" onClick={() => removeDiplome(index)}>✕ Supprimer</button>
+                    )}
+                  </div>
                   <div className="form-row">
                     <FormSelect label="Type de diplôme" name={`diploma${index}`} value={diplome.nom} onChange={(e) => handleDiplomeChange(index, 'nom', e.target.value)} options={DIPLOMAS} />
                     {diplome.nom !== 'BAC' && diplome.nom && (
@@ -621,7 +642,14 @@ const IdentificationForm = () => {
               <h3 style={{ marginTop: '40px' }}>🌍 Langues Étrangères</h3>
               {formData.langues.map((langue, index) => (
                 <div key={index} className="language-card">
-                  <h4>Langue {index + 1}</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0 }}>Langue {index + 1}</h4>
+                    {formData.langues.length > 1 && (
+                      <button type="button" className="btn-remove" onClick={() => removeLangue(index)}>
+                        ✕ Supprimer
+                      </button>
+                    )}
+                  </div>
                   <div className="form-row">
                     <FormSelect label="Langue" name={`language${index}`} value={langue.nom} onChange={(e) => handleLangueChange(index, 'nom', e.target.value)} options={LANGUAGES} />
                     {langue.nom && (

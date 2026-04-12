@@ -118,6 +118,26 @@ function doGet(e) {
           }, callback);
         }
 
+      case "sendEmail":
+        if (!e.parameter.data) {
+          return outputJSON({ error: "Paramètre data manquant" }, callback);
+        }
+
+        try {
+          const userData = JSON.parse(decodeURIComponent(e.parameter.data));
+          sendEmailAPI(userData);
+
+          return outputJSON({ 
+            success: true,
+            message: "✓ Email envoyé avec succès"
+          }, callback);
+        } catch (parseError) {
+          return outputJSON({ 
+            success: false,
+            error: "Erreur envoi email: " + parseError.toString()
+          }, callback);
+        }
+
       default:
         return outputJSON({ error: "Action invalide : " + action }, callback);
     }
@@ -281,5 +301,37 @@ function testConnection() {
     console.log("✓ Mapping automatique des données du formulaire aux colonnes");
   } catch (error) {
     console.log("✗ Erreur: " + error.toString());
+  }
+}
+
+/* =====================================================
+   6) sendEmailAPI(userData)
+   Envoie un email HTML au collaborateur avec TOUTES ses infos
+   Email depuis: rhbiconnecteo@gmail.com
+===================================================== */
+function sendEmailAPI(userData) {
+  try {
+    const emailDestination = userData['Email personnel'];
+    
+    if (!emailDestination || !emailDestination.includes('@')) {
+      throw new Error("Email invalide ou manquant: " + emailDestination);
+    }
+
+    const htmlContent = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:800px;margin:0 auto;padding:20px;background-color:#f5f5f5}.header{background:linear-gradient(to right,#667eea,#764ba2);color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center}.header h1{margin:0;font-size:24px}.content{background:white;padding:20px}.section{margin-bottom:30px;border-left:4px solid #667eea;padding-left:15px}.section h2{color:#667eea;font-size:16px;margin:0 0 15px 0}.field{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:10px}.field-item{}.label{font-weight:bold;color:#555;font-size:12px}.value{color:#333;font-size:14px;margin-top:3px}.footer{background:#f9f9f9;padding:15px;text-align:center;font-size:12px;color:#999}table{width:100%;border-collapse:collapse;margin-top:10px}table td{padding:8px;border-bottom:1px solid #eee}.date-badge{background:#667eea;color:white;padding:10px;border-radius:4px;text-align:center;margin-bottom:20px}</style></head><body><div class="container"><div class="header"><h1>📋 Confirmation d'Enregistrement</h1><p>Vos informations ont été enregistrées avec succès</p></div><div class="content"><div class="date-badge"><strong>Date d'insertion:</strong> ${userData['Date d\'insertion'] || '-'}</div><div class="section"><h2>👤 Informations Personnelles</h2><div class="field"><div class="field-item"><div class="label">Matricule</div><div class="value">${userData['Matricule'] || '-'}</div></div><div class="field-item"><div class="label">Contrat</div><div class="value">${userData['Contrat'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Nom</div><div class="value">${userData['Nom et Prénoms'] || '-'}</div></div><div class="field-item"><div class="label">Genre</div><div class="value">${userData['Genre'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Date de naissance</div><div class="value">${userData['Date de naissance'] || '-'}</div></div><div class="field-item"><div class="label">Lieu de naissance</div><div class="value">${userData['Lieu de naissance'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Adresse</div><div class="value">${userData['Adresse'] || '-'}</div></div><div class="field-item"><div class="label">Nationalité</div><div class="value">${userData['Nationalité'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Ethnie</div><div class="value">${userData['Ethenie'] || '-'}</div></div><div class="field-item"><div class="label">Dialecte / Niveau</div><div class="value">${userData['Dialecte'] || '-'} / ${userData['Niveau'] || '-'}</div></div></div></div><div class="section"><h2>🆔 Carte Nationale d'Identité</h2><div class="field"><div class="field-item"><div class="label">Numéro CIN</div><div class="value">${userData['Numéro CIN'] || '-'}</div></div><div class="field-item"><div class="label">Date de délivrance</div><div class="value">${userData['Date de délivrance'] || '-'}</div></div></div></div><div class="section"><h2>📞 Contact</h2><div class="field"><div class="field-item"><div class="label">Contact personnel</div><div class="value">${userData['Contact personnel'] || '-'}</div></div><div class="field-item"><div class="label">Numéro Mvola</div><div class="value">${userData['Numéro Mvola'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Email</div><div class="value">${userData['Email personnel'] || '-'}</div></div></div></div><div class="section"><h2>🗣️ Langues</h2><table><tr><td><strong>Langue</strong></td><td><strong>Niveau</strong></td></tr><tr><td>${userData['Langues 1'] || '-'}</td><td>${userData['Niveau 1'] || '-'}</td></tr><tr><td>${userData['Langues 2'] || '-'}</td><td>${userData['Niveau 2'] || '-'}</td></tr><tr><td>${userData['Autres langues'] || '-'}</td><td>${userData['Niveau 3'] || '-'}</td></tr></table></div><div class="section"><h2>🎓 Formation</h2><table><tr><td><strong>Diplôme</strong></td><td><strong>Domaine</strong></td></tr><tr><td>${userData['Diplomes obtenues 1'] || '-'}</td><td>${userData['Domaine d\'étude 1'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 2'] || '-'}</td><td>${userData['Domaine d\'étude 2'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 3'] || '-'}</td><td>${userData['Domaine d\'étude 3'] || '-'}</td></tr></table></div></div><div class="footer"><p>Email from <strong>RHBI Connecteo</strong> Identification System</p><p>© 2026 - All rights reserved</p></div></div></body></html>`;
+
+    GmailApp.sendEmail(
+      emailDestination,
+      "✓ Confirmation d'Enregistrement - " + (userData['Nom et Prénoms'] || 'Collaborateur'),
+      "",
+      {
+        htmlBody: htmlContent,
+        from: "rhbiconnecteo@gmail.com",
+        replyTo: "rhbiconnecteo@gmail.com"
+      }
+    );
+
+    Logger.log("✓ Email envoyé à: " + emailDestination);
+  } catch (error) {
+    throw new Error("Erreur sendEmailAPI: " + error.toString());
   }
 }
