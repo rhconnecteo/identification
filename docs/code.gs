@@ -22,59 +22,61 @@ const COLUMN_MAP = {
   'Genre': 4,
   'Date de naissance': 5,
   'Lieu de naissance': 6,
-  'Numéro CIN': 7,
-  'Date de délivrance': 8,
-  'Lieu de délivrance': 9,
-  'Nationalité': 10,
-  'Ethenie': 11,
-  'Contact personnel': 12,
-  'Numéro Mvola': 13,
-  'Nom de personne à contact au cas d\'urgence': 14,
-  'Numéro d\'urgence': 15,
-  'Email personnel': 16,
-  'Situation familiale': 17,
-  'Nom et prénoms de conjoint': 18,
-  'Date de mariage': 19,
-  // Enfants 1-9 (colonnes 20-37)
-  'Nom enfant 1': 20,
-  'date de naissance 1': 21,
-  'Nom enfant 2': 22,
-  'date de naissance 2': 23,
-  'Nom enfant 3': 24,
-  'date de naissance 3': 25,
-  'Nom enfant 4': 26,
-  'date de naissance 4': 27,
-  'Nom enfant 5': 28,
-  'date de naissance 5': 29,
-  'Nom enfant 6': 30,
-  'date de naissance 6': 31,
-  'Nom enfant 7': 32,
-  'date de naissance 7': 33,
-  'Nom enfant 8': 34,
-  'date de naissance 8': 35,
-  'Nom enfant 9': 36,
-  // CNAPS + Vaccin (colonnes 37-38)
-  'Numéro Cnaps': 37,
-  'Vaccin COVID 19': 38,
-  // Diplômes 1-4 (colonnes 39-46)
-  'Diplomes obtenues 1': 39,
-  'Domaine d\'étude 1': 40,
-  'Diplomes obtenues 2': 41,
-  'Domaine d\'étude 2': 42,
-  'Diplomes obtenues 3': 43,
-  'Domaine d\'étude 3': 44,
-  'Autres': 45,
-  'Domaine d\'étude 4': 46,
-  // Langues 1-3 (colonnes 47-52)
-  'Langues 1': 47,
-  'Niveau 1': 48,
-  'Langues 2': 49,
-  'Niveau 2': 50,
-  'Autres langues': 51,
-  'Niveau 3': 52,
-  // Dialecte + Niveau (colonnes 53-54)
-  'Dialecte': 53,
-  'Niveau': 54,
+  'Adresse': 7,
+  'Numéro CIN': 8,
+  'Date de délivrance': 9,
+  'Lieu de délivrance': 10,
+  'Nationalité': 11,
+  'Ethenie': 12,
+  'Contact personnel': 13,
+  'Numéro Mvola': 14,
+  'Nom de personne à contact au cas d\'urgence': 15,
+  'Numéro d\'urgence': 16,
+  'Email personnel': 17,
+  'Situation familiale': 18,
+  'Nom et prénoms de conjoint': 19,
+  'Date de mariage': 20,
+  // Enfants 1-9 (colonnes 21-38)
+  'Nom enfant 1': 21,
+  'date de naissance 1': 22,
+  'Nom enfant 2': 23,
+  'date de naissance 2': 24,
+  'Nom enfant 3': 25,
+  'date de naissance 3': 26,
+  'Nom enfant 4': 27,
+  'date de naissance 4': 28,
+  'Nom enfant 5': 29,
+  'date de naissance 5': 30,
+  'Nom enfant 6': 31,
+  'date de naissance 6': 32,
+  'Nom enfant 7': 33,
+  'date de naissance 7': 34,
+  'Nom enfant 8': 35,
+  'date de naissance 8': 36,
+  'Nom enfant 9': 37,
+  'date de naissance 9': 38,
+  // CNAPS + Vaccin (colonnes 39-40)
+  'Numéro Cnaps': 39,
+  'Vaccin COVID 19': 40,
+  // Diplômes 1-4 (colonnes 41-48)
+  'Diplomes obtenues 1': 41,
+  'Domaine d\'étude 1': 42,
+  'Diplomes obtenues 2': 43,
+  'Domaine d\'étude 2': 44,
+  'Diplomes obtenues 3': 45,
+  'Domaine d\'étude 3': 46,
+  'Autres': 47,
+  'Domaine d\'étude 4': 48,
+  // Langues 1-3 (colonnes 49-54)
+  'Langues 1': 49,
+  'Niveau 1': 50,
+  'Langues 2': 51,
+  'Niveau 2': 52,
+  'Autres langues': 53,
+  'Niveau 3': 54,
+  // Dialecte + Niveau (colonnes 55-56)
+  'Dialecte': 55,
+  'Niveau': 56,
 };
 
 /* =====================================================
@@ -243,7 +245,7 @@ function saveUserAPI(user) {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
     
     // Construire une ligne vide avec le bon nombre de colonnes
-    const newRow = new Array(55); // 55 colonnes au total
+    const newRow = new Array(57); // 57 colonnes au total
 
     // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
     for (let fieldName in user) {
@@ -319,14 +321,12 @@ function sendEmailAPI(userData) {
 
     const htmlContent = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:800px;margin:0 auto;padding:20px;background-color:#f5f5f5}.header{background:linear-gradient(to right,#667eea,#764ba2);color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center}.header h1{margin:0;font-size:24px}.content{background:white;padding:20px}.section{margin-bottom:30px;border-left:4px solid #667eea;padding-left:15px}.section h2{color:#667eea;font-size:16px;margin:0 0 15px 0}.field{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:10px}.field-item{}.label{font-weight:bold;color:#555;font-size:12px}.value{color:#333;font-size:14px;margin-top:3px}.footer{background:#f9f9f9;padding:15px;text-align:center;font-size:12px;color:#999}table{width:100%;border-collapse:collapse;margin-top:10px}table td{padding:8px;border-bottom:1px solid #eee}.date-badge{background:#667eea;color:white;padding:10px;border-radius:4px;text-align:center;margin-bottom:20px}</style></head><body><div class="container"><div class="header"><h1>📋 Confirmation d'Enregistrement</h1><p>Vos informations ont été enregistrées avec succès</p></div><div class="content"><div class="date-badge"><strong>Date d'insertion:</strong> ${userData['Date d\'insertion'] || '-'}</div><div class="section"><h2>👤 Informations Personnelles</h2><div class="field"><div class="field-item"><div class="label">Matricule</div><div class="value">${userData['Matricule'] || '-'}</div></div><div class="field-item"><div class="label">Contrat</div><div class="value">${userData['Contrat'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Nom</div><div class="value">${userData['Nom et Prénoms'] || '-'}</div></div><div class="field-item"><div class="label">Genre</div><div class="value">${userData['Genre'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Date de naissance</div><div class="value">${userData['Date de naissance'] || '-'}</div></div><div class="field-item"><div class="label">Lieu de naissance</div><div class="value">${userData['Lieu de naissance'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Adresse</div><div class="value">${userData['Adresse'] || '-'}</div></div><div class="field-item"><div class="label">Nationalité</div><div class="value">${userData['Nationalité'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Ethnie</div><div class="value">${userData['Ethenie'] || '-'}</div></div><div class="field-item"><div class="label">Dialecte / Niveau</div><div class="value">${userData['Dialecte'] || '-'} / ${userData['Niveau'] || '-'}</div></div></div></div><div class="section"><h2>🆔 Carte Nationale d'Identité</h2><div class="field"><div class="field-item"><div class="label">Numéro CIN</div><div class="value">${userData['Numéro CIN'] || '-'}</div></div><div class="field-item"><div class="label">Date de délivrance</div><div class="value">${userData['Date de délivrance'] || '-'}</div></div></div></div><div class="section"><h2>📞 Contact</h2><div class="field"><div class="field-item"><div class="label">Contact personnel</div><div class="value">${userData['Contact personnel'] || '-'}</div></div><div class="field-item"><div class="label">Numéro Mvola</div><div class="value">${userData['Numéro Mvola'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Email</div><div class="value">${userData['Email personnel'] || '-'}</div></div></div></div><div class="section"><h2>🗣️ Langues</h2><table><tr><td><strong>Langue</strong></td><td><strong>Niveau</strong></td></tr><tr><td>${userData['Langues 1'] || '-'}</td><td>${userData['Niveau 1'] || '-'}</td></tr><tr><td>${userData['Langues 2'] || '-'}</td><td>${userData['Niveau 2'] || '-'}</td></tr><tr><td>${userData['Autres langues'] || '-'}</td><td>${userData['Niveau 3'] || '-'}</td></tr></table></div><div class="section"><h2>🎓 Formation</h2><table><tr><td><strong>Diplôme</strong></td><td><strong>Domaine</strong></td></tr><tr><td>${userData['Diplomes obtenues 1'] || '-'}</td><td>${userData['Domaine d\'étude 1'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 2'] || '-'}</td><td>${userData['Domaine d\'étude 2'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 3'] || '-'}</td><td>${userData['Domaine d\'étude 3'] || '-'}</td></tr></table></div></div><div class="footer"><p>Email from <strong>RHBI Connecteo</strong> Identification System</p><p>© 2026 - All rights reserved</p></div></div></body></html>`;
 
-    GmailApp.sendEmail(
+    MailApp.sendEmail(
       emailDestination,
       "✓ Confirmation d'Enregistrement - " + (userData['Nom et Prénoms'] || 'Collaborateur'),
-      "",
+      "Confirmation d'enregistrement",
       {
-        htmlBody: htmlContent,
-        from: "rhbiconnecteo@gmail.com",
-        replyTo: "rhbiconnecteo@gmail.com"
+        htmlBody: htmlContent
       }
     );
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8NtgSBb0JUSqcULhHnvvbdn178da2sE2J0YW0Khyi8Gfpf-eGFRY8D3E1oQ9sSDbz-g/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwroY7LSeOSporbafAJU7jFlnJmRPGZuPB6q6JQw-0XwWszcvXxIws75wBw1HRXtXY7AA/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -454,7 +454,11 @@ const IdentificationForm = () => {
 
       // Envoyer l'email au collaborateur
       const emailUrl = `${SCRIPT_URL}?action=sendEmail&data=${encodeURIComponent(JSON.stringify(dataToSend))}`;
-      fetch(emailUrl, { method: 'GET', mode: 'no-cors' }).catch(err => console.log('Email envoyé (JSONP)', err));
+      console.log('📧 Envoi email à:', dataToSend['Email personnel']);
+      console.log('📧 URL Email:', emailUrl);
+      fetch(emailUrl, { method: 'GET', mode: 'no-cors' })
+        .then(() => console.log('✅ Email envoyé'))
+        .catch(err => console.log('⚠️ Erreur email:', err));
 
       setMessage('✓ Données enregistrées avec succès! Email envoyé au collaborateur.');
 

@@ -1,97 +1,337 @@
-// ============================================
-// Google Apps Script - Identification Backend
-// ============================================
-// Copiez tout ce code dans script.google.com
-// ============================================
+/*******************************************************
+ * CODE.GS - Identification Backend
+ * API Google Apps Script pour lire et enregistrer
+ * les données de la feuille Google Sheets "Base".
+ *
+ * Utilise uniquement doGet() avec actions (pattern GET)
+ * 
+ * MAPPING automatique des noms de colonnes
+ * Les colonnes du Sheet n'ont pas de numéros, on mappe par position
+ *******************************************************/
 
-// ⚙️ CONFIGURATION
-// TODO: Remplacez ces valeurs par les vôtres
-const SHEET_ID = "YOUR_SHEET_ID"; // Exemple: 1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p
-const SHEET_NAME = "Sheet1"; // Remplacez par le nom de votre feuille
+// ⚙️ CONFIGURATION - À REMPLACER
+const SHEET_ID = "1k3HeElkw11vwtWEBLALbSc49pbno3cRWQ_T6jFg_-9I";
+const SHEET_NAME = "Base";
 
-// ============================================
-// GET ENDPOINT - Récupère les données
-// ============================================
+// MAPPING: Noms reçus du formulaire React → Index de colonne
+const COLUMN_MAP = {
+  'Date d\'insertion': 0,
+  'Matricule': 1,
+  'Nom et Prénoms': 2,
+  'Contrat': 3,
+  'Genre': 4,
+  'Date de naissance': 5,
+  'Lieu de naissance': 6,
+  'Adresse': 7,
+  'Numéro CIN': 8,
+  'Date de délivrance': 9,
+  'Lieu de délivrance': 10,
+  'Nationalité': 11,
+  'Ethenie': 12,
+  'Contact personnel': 13,
+  'Numéro Mvola': 14,
+  'Nom de personne à contact au cas d\'urgence': 15,
+  'Numéro d\'urgence': 16,
+  'Email personnel': 17,
+  'Situation familiale': 18,
+  'Nom et prénoms de conjoint': 19,
+  'Date de mariage': 20,
+  // Enfants 1-9 (colonnes 21-38)
+  'Nom enfant 1': 21,
+  'date de naissance 1': 22,
+  'Nom enfant 2': 23,
+  'date de naissance 2': 24,
+  'Nom enfant 3': 25,
+  'date de naissance 3': 26,
+  'Nom enfant 4': 27,
+  'date de naissance 4': 28,
+  'Nom enfant 5': 29,
+  'date de naissance 5': 30,
+  'Nom enfant 6': 31,
+  'date de naissance 6': 32,
+  'Nom enfant 7': 33,
+  'date de naissance 7': 34,
+  'Nom enfant 8': 35,
+  'date de naissance 8': 36,
+  'Nom enfant 9': 37,
+  'date de naissance 9': 38,
+  // CNAPS + Vaccin (colonnes 39-40)
+  'Numéro Cnaps': 39,
+  'Vaccin COVID 19': 40,
+  // Diplômes 1-4 (colonnes 41-48)
+  'Diplomes obtenues 1': 41,
+  'Domaine d\'étude 1': 42,
+  'Diplomes obtenues 2': 43,
+  'Domaine d\'étude 2': 44,
+  'Diplomes obtenues 3': 45,
+  'Domaine d\'étude 3': 46,
+  'Autres': 47,
+  'Domaine d\'étude 4': 48,
+  // Langues 1-3 (colonnes 49-54)
+  'Langues 1': 49,
+  'Niveau 1': 50,
+  'Langues 2': 51,
+  'Niveau 2': 52,
+  'Autres langues': 53,
+  'Niveau 3': 54,
+  // Dialecte + Niveau (colonnes 55-56)
+  'Dialecte': 55,
+  'Niveau': 56,
+};
+
+/* =====================================================
+   1) ENTRY POINT : doGet()
+   Cette fonction reçoit les requêtes HTTP GET.
+   Exemple :
+   - ?action=getUsers
+   - ?action=saveUser&data={...}
+===================================================== */
 function doGet(e) {
-  try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-    const data = sheet.getDataRange().getValues();
-    
-    // Headers (première ligne)
-    const headers = data[0];
-    
-    // Convertir en array d'objets
-    const records = [];
-    for (let i = 1; i < data.length; i++) {
-      const record = {};
-      for (let j = 0; j < headers.length; j++) {
-        record[headers[j]] = data[i][j];
-      }
-      records.push(record);
-    }
-    
-    return ContentService.createTextOutput(JSON.stringify(records))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      error: true,
-      message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+  const action = e.parameter.action;
+  const callback = e.parameter.callback; // Pour JSONP
 
-// ============================================
-// POST ENDPOINT - Ajoute de nouvelles données
-// ============================================
-function doPost(e) {
+  if (!action) {
+    return outputJSON({ error: "Action manquante" }, callback);
+  }
+
   try {
-    // Parser les données reçues
-    const data = JSON.parse(e.postData.contents);
-    
-    // Ouvrir la feuille
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-    
-    // Récupérer les headers
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    
-    // Construire la nouvelle ligne en fonction de l'ordre des headers
-    const newRow = [];
-    for (let header of headers) {
-      newRow.push(data[header] || "");
+    switch (action) {
+
+      case "getUsers":
+        return outputJSON(getUsersAPI(), callback);
+
+      case "saveUser":
+        if (!e.parameter.data) {
+          return outputJSON({ error: "Paramètre data manquant" }, callback);
+        }
+
+        try {
+          const user = JSON.parse(decodeURIComponent(e.parameter.data));
+          saveUserAPI(user);
+
+          return outputJSON({ 
+            success: true,
+            message: "✓ Données enregistrées avec succès"
+          }, callback);
+        } catch (parseError) {
+          return outputJSON({ 
+            success: false,
+            error: "Erreur de parsing JSON: " + parseError.toString()
+          }, callback);
+        }
+
+      case "sendEmail":
+        if (!e.parameter.data) {
+          return outputJSON({ error: "Paramètre data manquant" }, callback);
+        }
+
+        try {
+          const userData = JSON.parse(decodeURIComponent(e.parameter.data));
+          sendEmailAPI(userData);
+
+          return outputJSON({ 
+            success: true,
+            message: "✓ Email envoyé avec succès"
+          }, callback);
+        } catch (parseError) {
+          return outputJSON({ 
+            success: false,
+            error: "Erreur envoi email: " + parseError.toString()
+          }, callback);
+        }
+
+      default:
+        return outputJSON({ error: "Action invalide : " + action }, callback);
     }
-    
-    // Ajouter la ligne au sheet
-    sheet.appendRow(newRow);
-    
-    // Retourner le succès
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: "Données enregistrées avec succès"
-    })).setMimeType(ContentService.MimeType.JSON);
-    
   } catch (error) {
-    Logger.log("Erreur: " + error.toString());
-    return ContentService.createTextOutput(JSON.stringify({
+    return outputJSON({ 
       success: false,
-      error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+      error: error.toString() 
+    }, callback);
   }
 }
 
-// ============================================
-// OPTIONNEL: Fonction de test
-// ============================================
+/* =====================================================
+   2) doOptions()
+   Gère les preflight requests et CORS
+===================================================== */
+function doOptions(e) {
+  return ContentService.createTextOutput()
+    .setMimeType(ContentService.MimeType.TEXT)
+    .addHeader('Access-Control-Allow-Origin', '*')
+    .addHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    .addHeader('Access-Control-Allow-Headers', 'Content-Type')
+    .addHeader('Access-Control-Max-Age', '86400');
+}
+
+/* =====================================================
+   3) outputJSON()
+   Transforme un objet JS en réponse JSON lisible
+   Support JSONP pour contourner CORS
+===================================================== */
+function outputJSON(obj, callback) {
+  let output = JSON.stringify(obj);
+  
+  // Si callback JSONP est fourni, enveloppe dans la fonction
+  if (callback) {
+    output = callback + '(' + output + ')';
+    return ContentService.createTextOutput(output).setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  
+  // Pour JSON normal, ajouter les headers
+  let result = ContentService.createTextOutput(output);
+  result.setMimeType(ContentService.MimeType.JSON);
+  return result;
+}
+
+/* =====================================================
+   4) getUsersAPI()
+   Récupère tous les utilisateurs enregistrés
+===================================================== */
+function getUsersAPI() {
+  try {
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const data = sh.getDataRange().getValues();
+    const headers = data[0];
+
+    const res = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const matricule = (data[i][1] || "").toString().trim();
+
+      // Passer les lignes vides
+      if (!matricule) continue;
+
+      // Construire l'objet utilisateur
+      const user = {};
+      
+      for (let j = 0; j < headers.length; j++) {
+        let value = data[i][j] || "";
+        
+        // Convertir les dates au bon format
+        if (value instanceof Date) {
+          const year = value.getFullYear();
+          const month = String(value.getMonth() + 1).padStart(2, '0');
+          const day = String(value.getDate()).padStart(2, '0');
+          value = `${year}-${month}-${day}`;
+        }
+        
+        user[headers[j]] = value.toString();
+      }
+
+      user.row = i + 1;
+      res.push(user);
+    }
+
+    return res;
+  } catch (error) {
+    throw new Error("Erreur getUsersAPI: " + error.toString());
+  }
+}
+
+/* =====================================================
+   5) saveUserAPI(user)
+   Enregistre un nouvel utilisateur dans la feuille
+   
+   Utilise le COLUMN_MAP pour mapper les noms → index
+===================================================== */
+function saveUserAPI(user) {
+  try {
+    // Validation basique
+    if (!user['Matricule']) {
+      throw new Error("Matricule est obligatoire");
+    }
+
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    
+    // Construire une ligne vide avec le bon nombre de colonnes
+    const newRow = new Array(57); // 57 colonnes au total
+
+    // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
+    for (let fieldName in user) {
+      if (COLUMN_MAP.hasOwnProperty(fieldName)) {
+        const colIndex = COLUMN_MAP[fieldName];
+        let value = user[fieldName] || "";
+        
+        // Convertir les dates au bon format
+        if (fieldName.includes("date") && fieldName.toLowerCase() !== "date d\'insertion") {
+          if (value && typeof value === 'string') {
+            value = new Date(value);
+          }
+        }
+        
+        newRow[colIndex] = value;
+      }
+    }
+
+    // Remplir les colonnes non mappées avec des chaînes vides
+    for (let i = 0; i < newRow.length; i++) {
+      if (newRow[i] === undefined) {
+        newRow[i] = "";
+      }
+    }
+
+    // Ajouter la ligne
+    sh.appendRow(newRow);
+    
+    Logger.log("✓ Ligne ajoutée - Matricule: " + user['Matricule']);
+  } catch (error) {
+    throw new Error("Erreur saveUserAPI: " + error.toString());
+  }
+}
+
+/* =====================================================
+   TEST - Exécuter depuis script.google.com
+===================================================== */
 function testConnection() {
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-    const lastRow = sheet.getLastRow();
-    const lastCol = sheet.getLastColumn();
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
     
-    Logger.log("✓ Connexion réussie!");
-    Logger.log("Dernière ligne: " + lastRow);
-    Logger.log("Dernière colonne: " + lastCol);
-    Logger.log("Headers: " + sheet.getRange(1, 1, 1, lastCol).getValues()[0].join(", "));
+    console.log("✓ Connexion réussie!");
+    console.log("Sheet: " + SHEET_NAME);
+    console.log("Dernière ligne: " + lastRow);
+    console.log("Colonnes: " + lastCol);
+    console.log("\nHeaders trouvés:");
+    for (let i = 0; i < headers.length; i++) {
+      console.log("[Col " + i + "] " + headers[i]);
+    }
+    
+    console.log("\n✓ COLUMN_MAP en place:");
+    console.log("✓ Mapping automatique des données du formulaire aux colonnes");
   } catch (error) {
-    Logger.log("✗ Erreur de connexion: " + error.toString());
+    console.log("✗ Erreur: " + error.toString());
+  }
+}
+
+/* =====================================================
+   6) sendEmailAPI(userData)
+   Envoie un email HTML au collaborateur avec TOUTES ses infos
+   Email depuis: rhbiconnecteo@gmail.com
+===================================================== */
+function sendEmailAPI(userData) {
+  try {
+    const emailDestination = userData['Email personnel'];
+    
+    if (!emailDestination || !emailDestination.includes('@')) {
+      throw new Error("Email invalide ou manquant: " + emailDestination);
+    }
+
+    const htmlContent = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:800px;margin:0 auto;padding:20px;background-color:#f5f5f5}.header{background:linear-gradient(to right,#667eea,#764ba2);color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center}.header h1{margin:0;font-size:24px}.content{background:white;padding:20px}.section{margin-bottom:30px;border-left:4px solid #667eea;padding-left:15px}.section h2{color:#667eea;font-size:16px;margin:0 0 15px 0}.field{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:10px}.field-item{}.label{font-weight:bold;color:#555;font-size:12px}.value{color:#333;font-size:14px;margin-top:3px}.footer{background:#f9f9f9;padding:15px;text-align:center;font-size:12px;color:#999}table{width:100%;border-collapse:collapse;margin-top:10px}table td{padding:8px;border-bottom:1px solid #eee}.date-badge{background:#667eea;color:white;padding:10px;border-radius:4px;text-align:center;margin-bottom:20px}</style></head><body><div class="container"><div class="header"><h1>📋 Confirmation d'Enregistrement</h1><p>Vos informations ont été enregistrées avec succès</p></div><div class="content"><div class="date-badge"><strong>Date d'insertion:</strong> ${userData['Date d\'insertion'] || '-'}</div><div class="section"><h2>👤 Informations Personnelles</h2><div class="field"><div class="field-item"><div class="label">Matricule</div><div class="value">${userData['Matricule'] || '-'}</div></div><div class="field-item"><div class="label">Contrat</div><div class="value">${userData['Contrat'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Nom</div><div class="value">${userData['Nom et Prénoms'] || '-'}</div></div><div class="field-item"><div class="label">Genre</div><div class="value">${userData['Genre'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Date de naissance</div><div class="value">${userData['Date de naissance'] || '-'}</div></div><div class="field-item"><div class="label">Lieu de naissance</div><div class="value">${userData['Lieu de naissance'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Adresse</div><div class="value">${userData['Adresse'] || '-'}</div></div><div class="field-item"><div class="label">Nationalité</div><div class="value">${userData['Nationalité'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Ethnie</div><div class="value">${userData['Ethenie'] || '-'}</div></div><div class="field-item"><div class="label">Dialecte / Niveau</div><div class="value">${userData['Dialecte'] || '-'} / ${userData['Niveau'] || '-'}</div></div></div></div><div class="section"><h2>🆔 Carte Nationale d'Identité</h2><div class="field"><div class="field-item"><div class="label">Numéro CIN</div><div class="value">${userData['Numéro CIN'] || '-'}</div></div><div class="field-item"><div class="label">Date de délivrance</div><div class="value">${userData['Date de délivrance'] || '-'}</div></div></div></div><div class="section"><h2>📞 Contact</h2><div class="field"><div class="field-item"><div class="label">Contact personnel</div><div class="value">${userData['Contact personnel'] || '-'}</div></div><div class="field-item"><div class="label">Numéro Mvola</div><div class="value">${userData['Numéro Mvola'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Email</div><div class="value">${userData['Email personnel'] || '-'}</div></div></div></div><div class="section"><h2>🗣️ Langues</h2><table><tr><td><strong>Langue</strong></td><td><strong>Niveau</strong></td></tr><tr><td>${userData['Langues 1'] || '-'}</td><td>${userData['Niveau 1'] || '-'}</td></tr><tr><td>${userData['Langues 2'] || '-'}</td><td>${userData['Niveau 2'] || '-'}</td></tr><tr><td>${userData['Autres langues'] || '-'}</td><td>${userData['Niveau 3'] || '-'}</td></tr></table></div><div class="section"><h2>🎓 Formation</h2><table><tr><td><strong>Diplôme</strong></td><td><strong>Domaine</strong></td></tr><tr><td>${userData['Diplomes obtenues 1'] || '-'}</td><td>${userData['Domaine d\'étude 1'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 2'] || '-'}</td><td>${userData['Domaine d\'étude 2'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 3'] || '-'}</td><td>${userData['Domaine d\'étude 3'] || '-'}</td></tr></table></div></div><div class="footer"><p>Email from <strong>RHBI Connecteo</strong> Identification System</p><p>© 2026 - All rights reserved</p></div></div></body></html>`;
+
+    MailApp.sendEmail(
+      emailDestination,
+      "✓ Confirmation d'Enregistrement - " + (userData['Nom et Prénoms'] || 'Collaborateur'),
+      "Confirmation d'enregistrement",
+      {
+        htmlBody: htmlContent
+      }
+    );
+
+    Logger.log("✓ Email envoyé à: " + emailDestination);
+  } catch (error) {
+    throw new Error("Erreur sendEmailAPI: " + error.toString());
   }
 }
