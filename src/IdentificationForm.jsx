@@ -462,6 +462,11 @@ const IdentificationForm = () => {
 
       setMessage('✓ Données enregistrées avec succès! Email envoyé au collaborateur.');
 
+      // Cacher le message après 5 secondes
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
+
       setFormData({
         dateInsertion: new Date().toISOString().split('T')[0],
         matricule: '',
@@ -506,13 +511,13 @@ const IdentificationForm = () => {
       <nav className={`form-navbar ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'navbar-complete' : ''}`}>
         <div className="navbar-content">
           <img src="/connecteo.png" alt="Connecteo Logo" className="navbar-logo" />
-          <h1 className="navbar-title">📋 Formulaire d'Identification</h1>
+          <h1 className="navbar-title"><span className="title-icon">📋</span><span className="title-text">Formulaire d'Identification</span></h1>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <button type="button" className="navbar-btn-submit" onClick={(e) => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
-              👥 Collaborateurs
+              <span className="btn-emoji">👥</span><span className="btn-text"> Collaborateurs</span>
             </button>
             <button type="button" className="navbar-btn-submit" onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
-              {loading ? '⏳ Enregistrement...' : '✓ Enregistrer'}
+              <span className="btn-emoji">{loading ? '⏳' : '✓'}</span><span className="btn-text"> {loading ? 'Enregistrement...' : 'Enregistrer'}</span>
             </button>
           </div>
         </div>
@@ -720,20 +725,7 @@ const IdentificationForm = () => {
 
           {/* Panneau Collaborateurs dans Navbar */}
           {showCollaborators && (
-            <div style={{
-              position: 'fixed',
-              top: '130px',
-              right: '20px',
-              width: '450px',
-              maxHeight: '600px',
-              background: 'white',
-              border: '2px solid #667eea',
-              borderRadius: '8px',
-              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-              zIndex: 40,
-              overflowY: 'auto',
-              padding: '20px'
-            }}>
+            <div className="collaborators-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0 }}>👥 Collaborateurs</h3>
                 <button 
