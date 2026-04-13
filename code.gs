@@ -67,16 +67,23 @@ const COLUMN_MAP = {
   'Domaine d\'étude 3': 46,
   'Autres': 47,
   'Domaine d\'étude 4': 48,
-  // Langues 1-3 (colonnes 49-54)
-  'Langues 1': 49,
-  'Niveau 1': 50,
-  'Langues 2': 51,
-  'Niveau 2': 52,
-  'Autres langues': 53,
-  'Niveau 3': 54,
-  // Dialecte + Niveau (colonnes 55-56)
-  'Dialecte': 55,
-  'Niveau': 56,
+  // Formations 1-3 (colonnes 49-51) - AW, AX, AY
+  'Formation 1': 49,
+  'Formation 2': 50,
+  'Formation 3': 51,
+  // Ancien poste chez Connecteo 1-2 (colonnes 52-53) - AZ, BA
+  'ancien poste chez connecteo 1': 52,
+  'ancien poste chez connecteo 2': 53,
+  // Langues 1-3 (colonnes 54-59) - BB, BC, BD, BE, BF, BG
+  'Langues 1': 54,
+  'Niveau 1': 55,
+  'Langues 2': 56,
+  'Niveau 2': 57,
+  'Autres langues': 58,
+  'Niveau 3': 59,
+  // Dialecte + Niveau (colonnes 60-61) - BH, BI
+  'Dialecte': 60,
+  'Niveau': 61,
 };
 
 /* =====================================================
@@ -245,7 +252,7 @@ function saveUserAPI(user) {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
     
     // Construire une ligne vide avec le bon nombre de colonnes
-    const newRow = new Array(57); // 57 colonnes au total
+    const newRow = new Array(65); // 65 colonnes au total (0-64)
 
     // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
     for (let fieldName in user) {
@@ -281,8 +288,45 @@ function saveUserAPI(user) {
 }
 
 /* =====================================================
-   TEST - Exécuter depuis script.google.com
+   Helper - Convertir index numérique en lettre colonne
 ===================================================== */
+function indexToColumn(index) {
+  let col = '';
+  index = index + 1; // Les indices Google Sheets commencent à 1
+  while (index > 0) {
+    index--;
+    col = String.fromCharCode(65 + (index % 26)) + col;
+    index = Math.floor(index / 26);
+  }
+  return col;
+}
+
+/* =====================================================
+   AUTO MAP - Scanner et afficher TOUTES les colonnes
+===================================================== */
+function autoMapColumns() {
+  try {
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const lastCol = sh.getLastColumn();
+    const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+    
+    console.log("╔═══════════════════════════════════════════════════════════╗");
+    console.log("║        SCAN COMPLET DES COLONNES DU SHEET                 ║");
+    console.log("╚═══════════════════════════════════════════════════════════╝\n");
+    
+    for (let i = 0; i < headers.length; i++) {
+      const colLetter = indexToColumn(i);
+      console.log(`[${i.toString().padStart(2, '0')}] ${colLetter.padEnd(3)} : ${headers[i]}`);
+    }
+    
+    console.log("\n╔═══════════════════════════════════════════════════════════╗");
+    console.log("║  Copiez les indices au COLUMN_MAP dans code.gs          ║");
+    console.log("╚═══════════════════════════════════════════════════════════╝");
+  } catch (error) {
+    console.log("✗ Erreur: " + error.toString());
+  }
+}
+
 function testConnection() {
   try {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
@@ -316,8 +360,11 @@ function sendEmailAPI(userData) {
     const emailDestination = userData['Email personnel'];
     
     if (!emailDestination || !emailDestination.includes('@')) {
+      Logger.log("❌ Email invalide: " + emailDestination);
       throw new Error("Email invalide ou manquant: " + emailDestination);
     }
+
+    Logger.log("📧 Tentative d'envoi à: " + emailDestination);
 
     const htmlContent = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:800px;margin:0 auto;padding:20px;background-color:#f5f5f5}.header{background:linear-gradient(to right,#667eea,#764ba2);color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center}.header h1{margin:0;font-size:24px}.content{background:white;padding:20px}.section{margin-bottom:30px;border-left:4px solid #667eea;padding-left:15px}.section h2{color:#667eea;font-size:16px;margin:0 0 15px 0}.field{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:10px}.field-item{}.label{font-weight:bold;color:#555;font-size:12px}.value{color:#333;font-size:14px;margin-top:3px}.footer{background:#f9f9f9;padding:15px;text-align:center;font-size:12px;color:#999}table{width:100%;border-collapse:collapse;margin-top:10px}table td{padding:8px;border-bottom:1px solid #eee}.date-badge{background:#667eea;color:white;padding:10px;border-radius:4px;text-align:center;margin-bottom:20px}</style></head><body><div class="container"><div class="header"><h1>📋 Confirmation d'Enregistrement</h1><p>Vos informations ont été enregistrées avec succès</p></div><div class="content"><div class="date-badge"><strong>Date d'insertion:</strong> ${userData['Date d\'insertion'] || '-'}</div><div class="section"><h2>👤 Informations Personnelles</h2><div class="field"><div class="field-item"><div class="label">Matricule</div><div class="value">${userData['Matricule'] || '-'}</div></div><div class="field-item"><div class="label">Contrat</div><div class="value">${userData['Contrat'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Nom</div><div class="value">${userData['Nom et Prénoms'] || '-'}</div></div><div class="field-item"><div class="label">Genre</div><div class="value">${userData['Genre'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Date de naissance</div><div class="value">${userData['Date de naissance'] || '-'}</div></div><div class="field-item"><div class="label">Lieu de naissance</div><div class="value">${userData['Lieu de naissance'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Adresse</div><div class="value">${userData['Adresse'] || '-'}</div></div><div class="field-item"><div class="label">Nationalité</div><div class="value">${userData['Nationalité'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Ethnie</div><div class="value">${userData['Ethenie'] || '-'}</div></div><div class="field-item"><div class="label">Dialecte / Niveau</div><div class="value">${userData['Dialecte'] || '-'} / ${userData['Niveau'] || '-'}</div></div></div></div><div class="section"><h2>🆔 Carte Nationale d'Identité</h2><div class="field"><div class="field-item"><div class="label">Numéro CIN</div><div class="value">${userData['Numéro CIN'] || '-'}</div></div><div class="field-item"><div class="label">Date de délivrance</div><div class="value">${userData['Date de délivrance'] || '-'}</div></div></div></div><div class="section"><h2>📞 Contact</h2><div class="field"><div class="field-item"><div class="label">Contact personnel</div><div class="value">${userData['Contact personnel'] || '-'}</div></div><div class="field-item"><div class="label">Numéro Mvola</div><div class="value">${userData['Numéro Mvola'] || '-'}</div></div></div><div class="field"><div class="field-item"><div class="label">Email</div><div class="value">${userData['Email personnel'] || '-'}</div></div></div></div><div class="section"><h2>🗣️ Langues</h2><table><tr><td><strong>Langue</strong></td><td><strong>Niveau</strong></td></tr><tr><td>${userData['Langues 1'] || '-'}</td><td>${userData['Niveau 1'] || '-'}</td></tr><tr><td>${userData['Langues 2'] || '-'}</td><td>${userData['Niveau 2'] || '-'}</td></tr><tr><td>${userData['Autres langues'] || '-'}</td><td>${userData['Niveau 3'] || '-'}</td></tr></table></div><div class="section"><h2>🎓 Formation</h2><table><tr><td><strong>Diplôme</strong></td><td><strong>Domaine</strong></td></tr><tr><td>${userData['Diplomes obtenues 1'] || '-'}</td><td>${userData['Domaine d\'étude 1'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 2'] || '-'}</td><td>${userData['Domaine d\'étude 2'] || '-'}</td></tr><tr><td>${userData['Diplomes obtenues 3'] || '-'}</td><td>${userData['Domaine d\'étude 3'] || '-'}</td></tr></table></div></div><div class="footer"><p>Email from <strong>RHBI Connecteo</strong> Identification System</p><p>© 2026 - All rights reserved</p></div></div></body></html>`;
 
@@ -326,12 +373,14 @@ function sendEmailAPI(userData) {
       "✓ Confirmation d'Enregistrement - " + (userData['Nom et Prénoms'] || 'Collaborateur'),
       "Confirmation d'enregistrement",
       {
-        htmlBody: htmlContent
+        htmlBody: htmlContent,
+        noReply: false
       }
     );
 
-    Logger.log("✓ Email envoyé à: " + emailDestination);
+    Logger.log("✅ Email envoyé avec succès à: " + emailDestination);
   } catch (error) {
+    Logger.log("❌ Erreur sendEmailAPI: " + error.toString());
     throw new Error("Erreur sendEmailAPI: " + error.toString());
   }
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwroY7LSeOSporbafAJU7jFlnJmRPGZuPB6q6JQw-0XwWszcvXxIws75wBw1HRXtXY7AA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF5WeyFiD--83h9mZ4UbB2gnUHNqRYraRg9GdFuO-ul9RVrKa9ew0BZrTX5n6WY_YBvg/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -81,7 +81,11 @@ const IdentificationForm = () => {
     langues: [
       { nom: '', niveau: '' }
     ],
-    dialecte: { nom: '', niveau: '' }
+    dialecte: { nom: '', niveau: '' },
+    ancienPosteConnecteo: false,
+    formerPositions: [],
+    formations: false,
+    formationsList: [{ nom: '' }]
   });
 
   const [errors, setErrors] = useState({});
@@ -110,7 +114,7 @@ const IdentificationForm = () => {
   };
 
   const isPersonalInfoComplete = () => {
-    return formData.matricule &&
+    const basicField = formData.matricule &&
            formData.nom &&
            formData.prenoms &&
            formData.contrat &&
@@ -119,9 +123,13 @@ const IdentificationForm = () => {
            formData.lieuNaissance &&
            formData.numeroCIN &&
            formData.dateDelivrance &&
-           formData.lieuDelivrance &&
-           formData.dialecte?.nom &&
-           formData.dialecte?.niveau;
+           formData.lieuDelivrance;
+
+    // Dialecte est requis seulement si la nationalité est Malagasy
+    if (formData.nationalite === 'Malagasy') {
+      return basicField && formData.dialecte?.nom && formData.dialecte?.niveau;
+    }
+    return basicField;
   };
 
   const isContactInfoComplete = () => {
@@ -153,7 +161,7 @@ const IdentificationForm = () => {
   const isFormationComplete = () => {
     const hasLangues = formData.langues && formData.langues.length > 0 &&
                        formData.langues.some(l => l.nom && l.niveau);
-    return hasLangues;
+    return hasLangues; // Formations et ancien poste sont optionnels, pas bloquants
   };
 
   const fetchCollaborators = async () => {
@@ -287,8 +295,11 @@ const IdentificationForm = () => {
       if (!formData.dateMariage) newErrors.dateMariage = 'Obligatoire';
     }
 
-    if (!formData.dialecte.nom) newErrors.dialecteNom = 'Dialecte obligatoire';
-    if (!formData.dialecte.niveau) newErrors.dialecteNiveau = 'Niveau requis';
+    // Dialecte et Ethnie optionnels si nationalité n'est pas Malagasy
+    if (formData.nationalite === 'Malagasy') {
+      if (!formData.dialecte.nom) newErrors.dialecteNom = 'Dialecte obligatoire';
+      if (!formData.dialecte.niveau) newErrors.dialecteNiveau = 'Niveau requis';
+    }
 
     if (formData.nombreEnfants > 0) {
       for (let i = 0; i < formData.nombreEnfants; i++) {
@@ -375,6 +386,64 @@ const IdentificationForm = () => {
            formData.langues.some(l => l.nom && l.niveau);
   };
 
+  const handleAncienPosteChange = (e) => {
+    const isChecked = e.target.checked;
+    setFormData(prev => ({
+      ...prev,
+      ancienPosteConnecteo: isChecked,
+      formerPositions: isChecked ? prev.formerPositions : []
+    }));
+  };
+
+  const handleAddPosition = () => {
+    setFormData(prev => ({
+      ...prev,
+      formerPositions: [...prev.formerPositions, { poste: '', duree: '' }]
+    }));
+  };
+
+  const handleRemovePosition = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      formerPositions: prev.formerPositions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePositionChange = (index, value) => {
+    const updatedPositions = [...formData.formerPositions];
+    updatedPositions[index] = { poste: value };
+    setFormData(prev => ({ ...prev, formerPositions: updatedPositions }));
+  };
+
+  const handleFormationsToggle = (e) => {
+    const isChecked = e.target.checked;
+    setFormData(prev => ({
+      ...prev,
+      formations: isChecked,
+      formationsList: isChecked ? prev.formationsList : []
+    }));
+  };
+
+  const handleFormationChange = (index, value) => {
+    const updatedFormations = [...formData.formationsList];
+    updatedFormations[index] = { nom: value };
+    setFormData(prev => ({ ...prev, formationsList: updatedFormations }));
+  };
+
+  const handleAddFormation = () => {
+    setFormData(prev => ({
+      ...prev,
+      formationsList: [...prev.formationsList, { nom: '' }]
+    }));
+  };
+
+  const handleRemoveFormation = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      formationsList: prev.formationsList.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -443,8 +512,18 @@ const IdentificationForm = () => {
         'Niveau 2': formData.langues[1]?.niveau || '',
         'Autres langues': formData.langues[2]?.nom || '',
         'Niveau 3': formData.langues[2]?.niveau || '',
-        'Dialecte': formData.dialecte.nom || 'Malagasy',
-        'Niveau': formData.dialecte.niveau || ''
+        'Dialecte': formData.nationalite === 'Malagasy' ? (formData.dialecte.nom || '') : '',
+        'Niveau': formData.nationalite === 'Malagasy' ? (formData.dialecte.niveau || '') : '',
+        // Formations (sans domaines)
+        'Formation 1': formData.formations ? (formData.formationsList[0]?.nom || '') : '',
+        'Formation 2': formData.formations ? (formData.formationsList[1]?.nom || '') : '',
+        'Formation 3': formData.formations ? (formData.formationsList[2]?.nom || '') : '',
+        'Domaine Formation 1': '',
+        'Domaine Formation 2': '',
+        'Domaine Formation 3': '',
+        // Ancien poste (envoyé seulement si vrai)
+        'ancien poste chez connecteo 1': formData.ancienPosteConnecteo ? (formData.formerPositions[0]?.poste || '') : '',
+        'ancien poste chez connecteo 2': formData.ancienPosteConnecteo ? (formData.formerPositions[1]?.poste || '') : ''
       };
 
       const url = `${SCRIPT_URL}?action=saveUser&data=${encodeURIComponent(JSON.stringify(dataToSend))}`;
@@ -497,7 +576,11 @@ const IdentificationForm = () => {
         vaccin: 'Non',
         diplomes: [{ nom: '', domaine: '' }],
         langues: [{ nom: '', niveau: '' }],
-        dialecte: { nom: '', niveau: '' }
+        dialecte: { nom: '', niveau: '' },
+        ancienPosteConnecteo: false,
+        formerPositions: [],
+        formations: false,
+        formationsList: [{ nom: '' }]
       });
     } catch (error) {
       setMessage('✗ Erreur: ' + error.message);
@@ -561,8 +644,8 @@ const IdentificationForm = () => {
               <div className="form-row-4">
                 <FormSelect label="Nationalité" name="nationalite" value={formData.nationalite} onChange={handleInputChange} options={['Malagasy', 'Etranger']} />
                 <FormSelect label="Ethnie" name="ethenie" value={formData.ethenie} onChange={handleInputChange} options={ETHNICITIES} />
-                <FormSelect label="Dialecte" name="nomDialecte" value={formData.dialecte.nom} onChange={(e) => setFormData(prev => ({ ...prev, dialecte: { ...prev.dialecte, nom: e.target.value } }))} options={ETHNICITIES} error={errors.dialecteNom} required />
-                <FormSelect label="Niveau" name="niveauDialecte" value={formData.dialecte.niveau} onChange={(e) => setFormData(prev => ({ ...prev, dialecte: { ...prev.dialecte, niveau: e.target.value } }))} options={LEVELS} error={errors.dialecteNiveau} required />
+                <FormSelect label="Dialecte" name="nomDialecte" value={formData.dialecte.nom} onChange={(e) => setFormData(prev => ({ ...prev, dialecte: { ...prev.dialecte, nom: e.target.value } }))} options={ETHNICITIES} error={errors.dialecteNom} required={formData.nationalite === 'Malagasy'} />
+                <FormSelect label="Niveau" name="niveauDialecte" value={formData.dialecte.niveau} onChange={(e) => setFormData(prev => ({ ...prev, dialecte: { ...prev.dialecte, niveau: e.target.value } }))} options={LEVELS} error={errors.dialecteNiveau} required={formData.nationalite === 'Malagasy'} />
               </div>
             </div>
           )}
@@ -627,7 +710,42 @@ const IdentificationForm = () => {
           {/* Tab: Formation & Compétences */}
           {activeTab === 'diplome' && (
             <div className="tab-content">
-              <h3>📚 Diplômes Obtenus (Max 3 avec domaines)</h3>
+              <h3>� Ancien poste chez Connecteo</h3>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.ancienPosteConnecteo} 
+                    onChange={handleAncienPosteChange}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>Avez-vous occupé un ancien poste chez Connecteo ?</span>
+                </label>
+              </div>
+              
+              {formData.ancienPosteConnecteo && (
+                <div className="former-positions-section">
+                  <h4>Postes occupés</h4>
+                  {formData.formerPositions.length === 0 ? (
+                    <p style={{ color: '#999', fontStyle: 'italic' }}>Aucun poste ajouté. Cliquez sur "Ajouter un poste" pour commencer.</p>
+                  ) : (
+                    formData.formerPositions.map((position, index) => (
+                      <div key={index} className="position-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <h5 style={{ margin: 0 }}>Poste {index + 1}</h5>
+                          {formData.formerPositions.length > 1 && (
+                            <button type="button" className="btn-remove" onClick={() => handleRemovePosition(index)}>✕ Supprimer</button>
+                          )}
+                        </div>
+                        <FormField label="Intitulé du poste" name={`position${index}`} value={position.poste} onChange={(e) => handlePositionChange(index, e.target.value)} />
+                      </div>
+                    ))
+                  )}
+                  <button type="button" className="btn-add" onClick={handleAddPosition}>+ Ajouter un poste</button>
+                </div>
+              )}
+
+              <h3 style={{ marginTop: '40px' }}>📚 Diplomés Obtenus (Max 3 avec domaines)</h3>
               {formData.diplomes.map((diplome, index) => (
                 <div key={index} className="diploma-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -646,6 +764,42 @@ const IdentificationForm = () => {
               ))}
               {formData.diplomes.length < 4 && (
                 <button type="button" className="btn-add" onClick={addDiplome}>+ Ajouter un diplôme</button>
+              )}
+
+              <h3 style={{ marginTop: '40px' }}>🎓 Formations Suivies</h3>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.formations} 
+                    onChange={handleFormationsToggle}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>Avez-vous suivi des formations ?</span>
+                </label>
+              </div>
+              
+              {formData.formations && (
+                <div className="formations-section">
+                  {formData.formationsList.length === 0 ? (
+                    <p style={{ color: '#999', fontStyle: 'italic' }}>Aucune formation ajoutée. Cliquez sur "Ajouter une formation" pour commencer.</p>
+                  ) : (
+                    formData.formationsList.map((formation, index) => (
+                      <div key={index} className="formation-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <h4 style={{ margin: 0 }}>Formation {index + 1}</h4>
+                          {formData.formationsList.length > 1 && (
+                            <button type="button" className="btn-remove" onClick={() => handleRemoveFormation(index)}>✕ Supprimer</button>
+                          )}
+                        </div>
+                        <FormField label="Intitulé de la formation" name={`formation${index}`} value={formation.nom} onChange={(e) => handleFormationChange(index, e.target.value)} />
+                      </div>
+                    ))
+                  )}
+                  {formData.formationsList.length < 10 && (
+                    <button type="button" className="btn-add" onClick={handleAddFormation}>+ Ajouter une formation</button>
+                  )}
+                </div>
               )}
               
               <h3 style={{ marginTop: '40px' }}>🌍 Langues Étrangères</h3>
@@ -670,8 +824,6 @@ const IdentificationForm = () => {
               {formData.langues.length < 10 && (
                 <button type="button" className="btn-add" onClick={handleAddLangue}>+ Ajouter d'autres langues</button>
               )}
-              
-
             </div>
           )}
 
