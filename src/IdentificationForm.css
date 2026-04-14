@@ -65,9 +65,9 @@
   flex: 1;
   transition: font-size 0.3s ease;
   min-width: auto;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -960,7 +960,7 @@
   .navbar-btn-submit {
     padding: 4px 6px;
     font-size: 12px;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .section-tabs {

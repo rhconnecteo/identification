@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF5WeyFiD--83h9mZ4UbB2gnUHNqRYraRg9GdFuO-ul9RVrKa9ew0BZrTX5n6WY_YBvg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7UHOQKKHWIRHWGOXe5mT1dDWfQoWC7smNQZLm8uvIHTBdD0kkMNFB9qKSjfoOKp4Yzg/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -457,6 +457,8 @@ const IdentificationForm = () => {
 
     try {
       const dataToSend = {
+        'Objet': 'Confirmation d\'Enregistrement',
+        'CC': 'miary95080@gmail.com',
         'Date d\'insertion': formData.dateInsertion,
         'Matricule': formData.matricule,
         'Nom et Prénoms': `${formData.nom} ${formData.prenoms}`,
