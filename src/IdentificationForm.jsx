@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7UHOQKKHWIRHWGOXe5mT1dDWfQoWC7smNQZLm8uvIHTBdD0kkMNFB9qKSjfoOKp4Yzg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8oLlnwE_TBI9ZhQKclBCbinU5ZsINQ_lCQlc6ZTqmlawoF87xchwLBtIaaKjWwfUgeA/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -271,8 +271,11 @@ const IdentificationForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
+    // Matricule: 7 caractères, pas d'espace
     if (!formData.matricule) newErrors.matricule = 'Matricule obligatoire';
     else if (!/^(CI|CN|CS)/.test(formData.matricule)) newErrors.matricule = 'Commence par CI, CN ou CS';
+    else if (formData.matricule.length !== 7) newErrors.matricule = 'Matricule: 7 caractères exactement';
+    else if (/\s/.test(formData.matricule)) newErrors.matricule = 'Matricule: pas d\'espaces autorisés';
 
     if (!formData.nom) newErrors.nom = 'Nom obligatoire';
     if (!formData.prenoms) newErrors.prenoms = 'Prénoms obligatoires';
@@ -283,11 +286,33 @@ const IdentificationForm = () => {
     if (!formData.numeroCIN) newErrors.numeroCIN = 'CIN obligatoire';
     if (!formData.dateDelivrance) newErrors.dateDelivrance = 'Date de délivrance obligatoire';
     if (!formData.lieuDelivrance) newErrors.lieuDelivrance = 'Lieu de délivrance obligatoire';
+    
+    // Contact personnel: 9 chiffres, pas d'espace
     if (!formData.contactPersonnel) newErrors.contactPersonnel = 'Contact obligatoire';
+    else if (!/^\d{9}$/.test(formData.contactPersonnel.replace(/\s/g, ''))) newErrors.contactPersonnel = '9 chiffres (sans espaces)';
+    
     if (!formData.nomPersonneUrgence) newErrors.nomPersonneUrgence = 'Nom obligatoire';
+    
+    // Numéro d'urgence: 9 chiffres, pas d'espace
     if (!formData.numeroUrgence) newErrors.numeroUrgence = 'Numéro obligatoire';
+    else if (!/^\d{9}$/.test(formData.numeroUrgence.replace(/\s/g, ''))) newErrors.numeroUrgence = '9 chiffres (sans espaces)';
+    
     if (!formData.emailPersonnel) newErrors.emailPersonnel = 'Email obligatoire';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailPersonnel)) newErrors.emailPersonnel = 'Email invalide';
+    
+    // Numéro Mvola: 9 chiffres, pas d'espace (si rempli)
+    if (formData.numeroMvola && !/^\d{9}$/.test(formData.numeroMvola.replace(/\s/g, ''))) newErrors.numeroMvola = '9 chiffres (sans espaces)';
+    
+    // Numéro CNAPS: 9 chiffres, pas d'espace (si rempli)
+    if (formData.numeroCnaps && !/^\d{9}$/.test(formData.numeroCnaps.replace(/\s/g, ''))) newErrors.numeroCnaps = '9 chiffres (sans espaces)';
+
+    // Validation: Date de naissance < Date de délivrance
+    if (formData.dateNaissance && formData.dateDelivrance) {
+      if (new Date(formData.dateNaissance) >= new Date(formData.dateDelivrance)) {
+        newErrors.dateNaissance = 'Date de naissance doit être avant la date de délivrance';
+        newErrors.dateDelivrance = 'Date de délivrance doit être après la date de naissance';
+      }
+    }
 
     if (formData.situationFamiliale === 'Marié(e)') {
       if (!formData.nomConjoint) newErrors.nomConjoint = 'Obligatoire';
@@ -312,12 +337,119 @@ const IdentificationForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Valider un champ spécifique en temps réel
+  const validateField = (name, value) => {
+    let error = '';
+
+    switch(name) {
+      case 'matricule':
+        if (!value) error = 'Matricule obligatoire';
+        else if (!/^(CI|CN|CS)/.test(value)) error = 'Commence par CI, CN ou CS';
+        else if (value.length !== 7) error = 'Matricule: 7 caractères exactement';
+        else if (/\s/.test(value)) error = 'Matricule: pas d\'espaces autorisés';
+        break;
+
+      case 'numeroCIN':
+        if (!value) error = 'CIN obligatoire';
+        break;
+
+      case 'contactPersonnel':
+        if (!value) error = 'Contact obligatoire';
+        else if (!/^\d{9}$/.test(value.replace(/\s/g, ''))) error = '9 chiffres (sans espaces)';
+        break;
+
+      case 'numeroUrgence':
+        if (!value) error = 'Numéro obligatoire';
+        else if (!/^\d{9}$/.test(value.replace(/\s/g, ''))) error = '9 chiffres (sans espaces)';
+        break;
+
+      case 'numeroMvola':
+        if (value && /\s/.test(value)) error = 'Pas d\'espaces autorisés';
+        break;
+
+      case 'numeroCnaps':
+        if (value && /\s/.test(value)) error = 'Pas d\'espaces autorisés';
+        break;
+
+      case 'emailPersonnel':
+        if (!value) error = 'Email obligatoire';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
+        break;
+
+      case 'nom':
+        if (!value) error = 'Nom obligatoire';
+        break;
+
+      case 'prenoms':
+        if (!value) error = 'Prénoms obligatoires';
+        break;
+
+      case 'contrat':
+        if (!value) error = 'Contrat obligatoire';
+        break;
+
+      case 'adresse':
+        if (!value) error = 'Adresse obligatoire';
+        break;
+
+      case 'dateNaissance':
+        if (!value) error = 'Date de naissance obligatoire';
+        break;
+
+      case 'lieuNaissance':
+        if (!value) error = 'Lieu de naissance obligatoire';
+        break;
+
+      case 'dateDelivrance':
+        if (!value) error = 'Date de délivrance obligatoire';
+        break;
+
+      case 'lieuDelivrance':
+        if (!value) error = 'Lieu de délivrance obligatoire';
+        break;
+
+      case 'nomPersonneUrgence':
+        if (!value) error = 'Nom obligatoire';
+        break;
+    }
+
+    return error;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    
+    // Valider le champ au fur et à mesure
+    const error = validateField(name, value);
+    const newErrors = { ...errors, [name]: error };
+
+    // Validation croisée: date de naissance < date de délivrance
+    if (name === 'dateNaissance' || name === 'dateDelivrance') {
+      const dateLieux = name === 'dateNaissance' 
+        ? value 
+        : formData.dateNaissance;
+      const dateDeliv = name === 'dateDelivrance' 
+        ? value 
+        : formData.dateDelivrance;
+
+      if (dateLieux && dateDeliv) {
+        if (new Date(dateLieux) >= new Date(dateDeliv)) {
+          newErrors['dateNaissance'] = 'Date de naissance doit être avant la date de délivrance';
+          newErrors['dateDelivrance'] = 'Date de délivrance doit être après la date de naissance';
+        } else {
+          // Effacer les erreurs de comparaison si valides
+          if (newErrors['dateNaissance'] === 'Date de naissance doit être avant la date de délivrance') {
+            newErrors['dateNaissance'] = '';
+          }
+          if (newErrors['dateDelivrance'] === 'Date de délivrance doit être après la date de naissance') {
+            newErrors['dateDelivrance'] = '';
+          }
+        }
+      }
     }
+
+    setErrors(newErrors);
   };
 
   const handleNombreEnfants = (e) => {
