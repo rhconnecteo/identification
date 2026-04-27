@@ -20,22 +20,24 @@ const COLUMN_MAP = {
   'Nom et Prénoms': 2,
   'Contrat': 3,
   'Genre': 4,
-  'Date de naissance': 5,
-  'Lieu de naissance': 6,
-  'Adresse': 7,
-  'Numéro CIN': 8,
-  'Date de délivrance': 9,
-  'Lieu de délivrance': 10,
-  'Nationalité': 11,
-  'Ethenie': 12,
-  'Contact personnel': 13,
-  'Numéro Mvola': 14,
-  'Nom de personne à contact au cas d\'urgence': 15,
-  'Numéro d\'urgence': 16,
-  'Email personnel': 17,
-  'Situation familiale': 18,
-  'Nom et prénoms de conjoint': 19,
-  'Date de mariage': 20,
+  'Fonction': 5,
+  'Rattachement': 6,
+  'Date de naissance': 7,
+  'Lieu de naissance': 8,
+  'Adresse': 9,
+  'Numéro CIN': 10,
+  'Date de délivrance': 11,
+  'Lieu de délivrance': 12,
+  'Nationalité': 13,
+  'Ethenie': 14,
+  'Contact personnel': 15,
+  'Numéro Mvola': 16,
+  'Nom de personne à contact au cas d\'urgence': 17,
+  'Numéro d\'urgence': 18,
+  'Email personnel': 19,
+  'Situation familiale': 20,
+  'Nom et prénoms de conjoint': 21,
+  'Date de mariage': 22,
   // Enfants 1-9 (colonnes 21-38)
   'Nom enfant 1': 21,
   'date de naissance 1': 22,
@@ -106,6 +108,9 @@ function doGet(e) {
 
       case "getUsers":
         return outputJSON(getUsersAPI(), callback);
+
+      case "getPosteOptions":
+        return outputJSON(getPosteOptionsAPI(), callback);
 
       case "saveUser":
         if (!e.parameter.data) {
@@ -237,7 +242,34 @@ function getUsersAPI() {
 }
 
 /* =====================================================
-   5) saveUserAPI(user)
+   5) getPosteOptionsAPI()
+   Récupère la liste des fonctions et rattachements depuis la feuille "Grande liste"
+===================================================== */
+function getPosteOptionsAPI() {
+  try {
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Grande liste');
+    if (!sh) {
+      throw new Error("Feuille 'Grande liste' introuvable");
+    }
+
+    const data = sh.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const fonction = (data[i][0] || '').toString().trim();
+      const rattachement = (data[i][1] || '').toString().trim();
+      if (!fonction) continue;
+      result.push({ fonction, rattachement });
+    }
+
+    return result;
+  } catch (error) {
+    throw new Error("Erreur getPosteOptionsAPI: " + error.toString());
+  }
+}
+
+/* =====================================================
+   6) saveUserAPI(user)
    Enregistre un nouvel utilisateur dans la feuille
    
    Utilise le COLUMN_MAP pour mapper les noms → index
@@ -252,7 +284,7 @@ function saveUserAPI(user) {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
     
     // Construire une ligne vide avec le bon nombre de colonnes
-    const newRow = new Array(65); // 65 colonnes au total (0-64)
+    const newRow = new Array(70); // 70 colonnes au total pour inclure Fonction/Rattachement
 
     // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
     for (let fieldName in user) {
@@ -384,6 +416,8 @@ Matricule: ${userData['Matricule'] || '-'}
 Contrat: ${userData['Contrat'] || '-'}
 Nom: ${userData['Nom et Prénoms'] || '-'}
 Genre: ${userData['Genre'] || '-'}
+Fonction: ${userData['Fonction'] || '-'}
+Rattachement: ${userData['Rattachement'] || '-'}
 Date de naissance: ${userData['Date de naissance'] || '-'}
 Lieu de naissance: ${userData['Lieu de naissance'] || '-'}
 Adresse: ${userData['Adresse'] || '-'}

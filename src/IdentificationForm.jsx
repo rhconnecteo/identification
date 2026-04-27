@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8oLlnwE_TBI9ZhQKclBCbinU5ZsINQ_lCQlc6ZTqmlawoF87xchwLBtIaaKjWwfUgeA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF5WeyFiD--83h9mZ4UbB2gnUHNqRYraRg9GdFuO-ul9RVrKa9ew0BZrTX5n6WY_YBvg/exec";
 const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -49,12 +49,15 @@ const TabButton = ({ activeTab, id, label, onClick, isComplete }) => {
 const IdentificationForm = () => {
 
   const [activeTab, setActiveTab] = useState('perso');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navbarGlow, setNavbarGlow] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
   const [filteredDate, setFilteredDate] = useState('');
   const [loadingCollaborators, setLoadingCollaborators] = useState(false);
+  const [posteOptions, setPosteOptions] = useState([]);
+  const [fonctionQuery, setFonctionQuery] = useState('');
+  const [posteLoading, setPosteLoading] = useState(false);
+  const [posteError, setPosteError] = useState('');
 
   const [formData, setFormData] = useState(() => {
     const defaultData = {
@@ -65,6 +68,8 @@ const IdentificationForm = () => {
       contrat: '',
       adresse: '',
       genre: 'M',
+      fonction: '',
+      rattachement: '',
       dateNaissance: '',
       lieuNaissance: '',
       numeroCIN: '',
@@ -131,8 +136,49 @@ const IdentificationForm = () => {
     setTimeout(() => setNavbarGlow(false), 600);
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(prev => !prev);
+  const fetchPosteOptions = async () => {
+    setPosteLoading(true);
+    setPosteError('');
+    const callbackName = 'jsonpPoste_' + Date.now();
+    let isTimeout = true;
+
+    window[callbackName] = (data) => {
+      isTimeout = false;
+      setPosteOptions(Array.isArray(data) ? data : []);
+      setPosteLoading(false);
+      if (document.head.contains(scriptTag)) {
+        document.head.removeChild(scriptTag);
+      }
+      delete window[callbackName];
+    };
+
+    const scriptTag = document.createElement('script');
+    scriptTag.src = `${SCRIPT_URL}?action=getPosteOptions&callback=${callbackName}`;
+    scriptTag.async = true;
+
+    scriptTag.onerror = () => {
+      isTimeout = false;
+      setPosteOptions([]);
+      setPosteError('Impossible de charger les options de poste');
+      setPosteLoading(false);
+      if (document.head.contains(scriptTag)) {
+        document.head.removeChild(scriptTag);
+      }
+      delete window[callbackName];
+    };
+
+    setTimeout(() => {
+      if (isTimeout && window[callbackName]) {
+        setPosteOptions([]);
+        setPosteError('Délai dépassé pour le chargement des postes');
+        setPosteLoading(false);
+        if (document.head.contains(scriptTag)) {
+          document.head.removeChild(scriptTag);
+        }
+      }
+    }, 8000);
+
+    document.head.appendChild(scriptTag);
   };
 
   const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -142,7 +188,8 @@ const IdentificationForm = () => {
     const basicComplete = isPersonalInfoComplete() &&
                           formData.emailPersonnel &&
                           isEmailValid(formData.emailPersonnel) &&
-                          isContactInfoComplete();
+                          isContactInfoComplete() &&
+                          isPosteComplete();
 
     if (!basicComplete) return false;
 
@@ -210,9 +257,18 @@ const IdentificationForm = () => {
     return situationOk && enfantsOk;
   };
 
+  const isPosteComplete = () => {
+    return formData.fonction && formData.rattachement;
+  };
+
   const isDiplomeInfoComplete = () => {
     return formData.diplomes && formData.diplomes.length > 0 &&
            formData.diplomes.some(d => d.nom && d.domaine);
+  };
+
+  const isLanguesInfoComplete = () => {
+    return formData.langues && formData.langues.length > 0 &&
+           formData.langues.some(l => l.nom && l.niveau);
   };
 
   const isFormationComplete = () => {
@@ -317,10 +373,15 @@ setTimeout(() => {
     });
   };
 
-  // Corriger les dates affichées (ajouter 1 jour pour compenser le décalage)
-  // Charger les collaborateurs au montage du composant
-  React.useEffect(() => {
-    fetchCollaborators();
+  const filteredFonctions = fonctionQuery
+    ? posteOptions.filter(option => option.fonction.toLowerCase().includes(fonctionQuery.toLowerCase()))
+    : posteOptions;
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchCollaborators();
+      fetchPosteOptions();
+    });
   }, []);
 
   const validateForm = () => {
@@ -354,6 +415,9 @@ setTimeout(() => {
     
     if (!formData.emailPersonnel) newErrors.emailPersonnel = 'Email obligatoire';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailPersonnel)) newErrors.emailPersonnel = 'Email invalide';
+
+    if (!formData.fonction) newErrors.fonction = 'Fonction obligatoire';
+    if (!formData.rattachement) newErrors.rattachement = 'Rattachement obligatoire';
     
     // Numéro Mvola: 9 chiffres, pas d'espace (si rempli)
     if (formData.numeroMvola && !/^\d{9}$/.test(formData.numeroMvola.replace(/\s/g, ''))) newErrors.numeroMvola = '9 chiffres (sans espaces)';
@@ -393,7 +457,7 @@ setTimeout(() => {
   };
 
   // Valider un champ spécifique en temps réel
-  const validateField = (name, value) => {
+  const validateField = (name, value, currentData = formData) => {
     let error = '';
 
     switch(name) {
@@ -439,6 +503,14 @@ setTimeout(() => {
         if (!value) error = 'Prénoms obligatoires';
         break;
 
+      case 'fonction':
+        if (!value) error = 'Fonction obligatoire';
+        break;
+
+      case 'rattachement':
+        if (!value) error = 'Rattachement obligatoire';
+        break;
+
       case 'contrat':
         if (!value) error = 'Contrat obligatoire';
         break;
@@ -451,12 +523,12 @@ setTimeout(() => {
         if (!value) error = 'Date de naissance obligatoire';
         break;
 
-      case 'lieuNaissance':
-        if (!value) error = 'Lieu de naissance obligatoire';
-        break;
-
       case 'dateDelivrance':
         if (!value) error = 'Date de délivrance obligatoire';
+        break;
+
+      case 'lieuNaissance':
+        if (!value) error = 'Lieu de naissance obligatoire';
         break;
 
       case 'lieuDelivrance':
@@ -468,43 +540,55 @@ setTimeout(() => {
         break;
     }
 
+    if ((name === 'dateNaissance' || name === 'dateDelivrance') && currentData.dateNaissance && currentData.dateDelivrance) {
+      const dateNaiss = name === 'dateNaissance' ? value : currentData.dateNaissance;
+      const dateDeliv = name === 'dateDelivrance' ? value : currentData.dateDelivrance;
+
+      if (new Date(dateNaiss) >= new Date(dateDeliv)) {
+        if (name === 'dateNaissance') error = 'Date de naissance doit être avant la date de délivrance';
+        if (name === 'dateDelivrance') error = 'Date de délivrance doit être après la date de naissance';
+      }
+    }
+
     return error;
+  };
+
+  const handleFonctionChange = (value) => {
+    const match = posteOptions.find(option => option.fonction.toLowerCase() === value.toLowerCase());
+    setFormData(prev => ({
+      ...prev,
+      fonction: value,
+      rattachement: match ? match.rattachement : ''
+    }));
+    setFonctionQuery(value);
+    clearWarningMessage();
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Valider le champ au fur et à mesure
-    const error = validateField(name, value);
-    const newErrors = { ...errors, [name]: error };
+    const nextFormData = { ...formData, [name]: value };
+    setFormData(nextFormData);
 
-    // Validation croisée: date de naissance < date de délivrance
-    if (name === 'dateNaissance' || name === 'dateDelivrance') {
-      const dateLieux = name === 'dateNaissance' 
-        ? value 
-        : formData.dateNaissance;
-      const dateDeliv = name === 'dateDelivrance' 
-        ? value 
-        : formData.dateDelivrance;
+    const error = validateField(name, value, nextFormData);
+    const nextErrors = { ...errors };
 
-      if (dateLieux && dateDeliv) {
-        if (new Date(dateLieux) >= new Date(dateDeliv)) {
-          newErrors['dateNaissance'] = 'Date de naissance doit être avant la date de délivrance';
-          newErrors['dateDelivrance'] = 'Date de délivrance doit être après la date de naissance';
-        } else {
-          // Effacer les erreurs de comparaison si valides
-          if (newErrors['dateNaissance'] === 'Date de naissance doit être avant la date de délivrance') {
-            newErrors['dateNaissance'] = '';
-          }
-          if (newErrors['dateDelivrance'] === 'Date de délivrance doit être après la date de naissance') {
-            newErrors['dateDelivrance'] = '';
-          }
-        }
+    if (error) {
+      nextErrors[name] = error;
+    } else {
+      delete nextErrors[name];
+    }
+
+    if ((name === 'dateNaissance' || name === 'dateDelivrance') && nextFormData.dateNaissance && nextFormData.dateDelivrance) {
+      if (new Date(nextFormData.dateNaissance) >= new Date(nextFormData.dateDelivrance)) {
+        nextErrors.dateNaissance = 'Date de naissance doit être avant la date de délivrance';
+        nextErrors.dateDelivrance = 'Date de délivrance doit être après la date de naissance';
+      } else {
+        delete nextErrors.dateNaissance;
+        delete nextErrors.dateDelivrance;
       }
     }
 
-    setErrors(newErrors);
+    setErrors(nextErrors);
     clearWarningMessage();
   };
 
@@ -571,11 +655,6 @@ setTimeout(() => {
       ...prev,
       langues: prev.langues.filter((_, i) => i !== index)
     }));
-  };
-
-  const isLanguesInfoComplete = () => {
-    return formData.langues && formData.langues.length > 0 &&
-           formData.langues.some(l => l.nom && l.niveau);
   };
 
   const handleAncienPosteChange = (e) => {
@@ -659,6 +738,8 @@ setTimeout(() => {
         'Nom et Prénoms': `${formData.nom} ${formData.prenoms}`,
         'Contrat': formData.contrat,
         'Genre': formData.genre,
+        'Fonction': formData.fonction,
+        'Rattachement': formData.rattachement,
         'Date de naissance': formData.dateNaissance,
         'Lieu de naissance': formData.lieuNaissance,
         'Adresse': formData.adresse,
@@ -751,6 +832,8 @@ setTimeout(() => {
         contrat: '',
         adresse: '',
         genre: 'M',
+        fonction: '',
+        rattachement: '',
         dateNaissance: '',
         lieuNaissance: '',
         numeroCIN: '',
@@ -779,6 +862,7 @@ setTimeout(() => {
         formations: false,
         formationsList: [{ nom: '' }]
       });
+      setFonctionQuery('');
       window.localStorage.removeItem('identificationFormData');
     } catch (error) {
       setMessage('✗ Erreur: ' + error.message);
@@ -787,34 +871,36 @@ setTimeout(() => {
     setLoading(false);
   };
 
+  const allFieldsComplete = isAllFieldsComplete();
+
   return (
     <div className="app-wrapper">
-      <aside className={`form-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'sidebar-complete' : ''}`}>
+      <aside className={`form-sidebar ${navbarGlow ? 'fire-glow' : ''}`}>
         <div className="sidebar-content">
-          <button type="button" className="sidebar-toggle" onClick={toggleSidebar} aria-label={sidebarCollapsed ? 'Ouvrir la sidebar' : 'Réduire la sidebar'}>
-            {sidebarCollapsed ? '➡️' : '⬅️'}
-          </button>
           <img src="/connecteo.png" alt="Connecteo Logo" className="sidebar-logo" />
           <h1 className="sidebar-title"><span className="title-icon">📋</span><span className="sidebar-title-text">Formulaire d'Identification</span></h1>
           <div className="sidebar-buttons">
             <button type="button" className="sidebar-btn-submit" onClick={() => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
               <span className="btn-emoji">👥</span><span className="btn-text"> Collaborateurs</span>
             </button>
-            <button type="button" className={`sidebar-btn-submit ${isAllFieldsComplete() ? 'sidebar-btn-complete' : ''}`} onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
+            <button type="button" className={`sidebar-btn-submit ${allFieldsComplete ? 'sidebar-btn-complete' : ''}`} onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
               <span className="btn-emoji">{loading ? '⏳' : '✓'}</span><span className="btn-text"> {loading ? 'Enregistrement...' : 'Enregistrer'}</span>
             </button>
           </div>
-          <div className="sidebar-status">{isAllFieldsComplete() ? "✅ Tous les champs sont complets" : "⚠️ Certains champs manquent"}</div>
+          {!allFieldsComplete && (
+            <div className="sidebar-status">⚠️ Certains champs manquent</div>
+          )}
           <nav className="sidebar-tabs">
-            <TabButton activeTab={activeTab} id="perso" label="📝 Informations Personnelles" onClick={() => { triggerFireGlow(); setActiveTab('perso'); }} isComplete={isPersonalInfoComplete()} />
+            <TabButton activeTab={activeTab} id="perso" label="📝 Infos perso" onClick={() => { triggerFireGlow(); setActiveTab('perso'); }} isComplete={isPersonalInfoComplete()} />
             <TabButton activeTab={activeTab} id="contact" label="📞 Contact" onClick={() => { triggerFireGlow(); setActiveTab('contact'); }} isComplete={isContactInfoComplete()} />
+            <TabButton activeTab={activeTab} id="poste" label="💼 Poste" onClick={() => { triggerFireGlow(); setActiveTab('poste'); }} isComplete={isPosteComplete()} />
             <TabButton activeTab={activeTab} id="famille" label="👨‍👩‍👧‍👦 Situation Familiale" onClick={() => { triggerFireGlow(); setActiveTab('famille'); }} isComplete={isFamilyInfoComplete()} />
             <TabButton activeTab={activeTab} id="diplome" label="🎓 Formation" onClick={() => { triggerFireGlow(); setActiveTab('diplome'); }} isComplete={isFormationComplete()} />
           </nav>
         </div>
       </aside>
 
-      <div className={`form-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <div className="form-container">
         <form onSubmit={handleSubmit}>
           {/* Tab: Informations Personnelles */}
           {activeTab === 'perso' && (
@@ -867,6 +953,40 @@ setTimeout(() => {
             </div>
           )}
 
+          {/* Tab: Poste */}
+          {activeTab === 'poste' && (
+            <div className="tab-content">
+              <div className="form-row">
+                <FormField
+                  label="Fonction"
+                  name="fonction"
+                  value={formData.fonction}
+                  onChange={(e) => handleFonctionChange(e.target.value)}
+                  error={errors.fonction}
+                  required
+                  placeholder="Rechercher une fonction..."
+                  list="fonction-options"
+                />
+                <FormField
+                  label="Rattachement"
+                  name="rattachement"
+                  value={formData.rattachement}
+                  onChange={handleInputChange}
+                  error={errors.rattachement}
+                  required
+                  disabled
+                />
+              </div>
+              {posteLoading && <p className="info-text">Chargement des postes...</p>}
+              {posteError && <p className="error-message">{posteError}</p>}
+              <datalist id="fonction-options">
+                {filteredFonctions.map((option, index) => (
+                  <option key={`${option.fonction}-${option.rattachement}-${index}`} value={option.fonction}>{option.rattachement}</option>
+                ))}
+              </datalist>
+            </div>
+          )}
+
           {/* Tab: Situation Familiale */}
           {activeTab === 'famille' && (
             <div className="tab-content">
@@ -909,7 +1029,7 @@ setTimeout(() => {
           {/* Tab: Formation & Compétences */}
           {activeTab === 'diplome' && (
             <div className="tab-content">
-              <h3>� Ancien poste chez Connecteo</h3>
+              <h3>🕰️ Ancien poste chez Connecteo</h3>
               <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input 
