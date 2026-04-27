@@ -30,19 +30,26 @@ const FormSelect = ({ label, name, value, onChange, options, error, required = f
   </div>
 );
 
-const TabButton = ({ activeTab, id, label, onClick, isComplete }) => (
-  <button
-    type="button"
-    className={`tab-button ${activeTab === id ? 'active' : ''} ${isComplete ? 'tab-complete' : ''}`}
-    onClick={onClick}
-  >
-    {label}
-  </button>
-);
+const TabButton = ({ activeTab, id, label, onClick, isComplete }) => {
+  const [icon, ...textParts] = label.split(' ');
+  const text = textParts.join(' ');
+  return (
+    <button
+      type="button"
+      className={`tab-button ${activeTab === id ? 'active' : ''} ${isComplete ? 'tab-complete' : ''}`}
+      onClick={onClick}
+      title={label}
+    >
+      <span className="tab-icon">{icon}</span>
+      <span className="tab-text">{text}</span>
+    </button>
+  );
+};
 
 const IdentificationForm = () => {
 
   const [activeTab, setActiveTab] = useState('perso');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navbarGlow, setNavbarGlow] = useState(false);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
@@ -122,6 +129,10 @@ const IdentificationForm = () => {
   const triggerFireGlow = () => {
     setNavbarGlow(true);
     setTimeout(() => setNavbarGlow(false), 600);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => !prev);
   };
 
   const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -778,15 +789,18 @@ setTimeout(() => {
 
   return (
     <div className="app-wrapper">
-      <aside className={`form-sidebar ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'sidebar-complete' : ''}`}>
+      <aside className={`form-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'sidebar-complete' : ''}`}>
         <div className="sidebar-content">
+          <button type="button" className="sidebar-toggle" onClick={toggleSidebar} aria-label={sidebarCollapsed ? 'Ouvrir la sidebar' : 'Réduire la sidebar'}>
+            {sidebarCollapsed ? '➡️' : '⬅️'}
+          </button>
           <img src="/connecteo.png" alt="Connecteo Logo" className="sidebar-logo" />
-          <h1 className="sidebar-title"><span className="title-icon">📋</span><span className="title-text">Formulaire d'Identification</span></h1>
+          <h1 className="sidebar-title"><span className="title-icon">📋</span><span className="sidebar-title-text">Formulaire d'Identification</span></h1>
           <div className="sidebar-buttons">
             <button type="button" className="sidebar-btn-submit" onClick={() => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
               <span className="btn-emoji">👥</span><span className="btn-text"> Collaborateurs</span>
             </button>
-            <button type="button" className="sidebar-btn-submit" onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
+            <button type="button" className={`sidebar-btn-submit ${isAllFieldsComplete() ? 'sidebar-btn-complete' : ''}`} onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
               <span className="btn-emoji">{loading ? '⏳' : '✓'}</span><span className="btn-text"> {loading ? 'Enregistrement...' : 'Enregistrer'}</span>
             </button>
           </div>
@@ -800,7 +814,7 @@ setTimeout(() => {
         </div>
       </aside>
 
-      <div className="form-container">
+      <div className={`form-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <form onSubmit={handleSubmit}>
           {/* Tab: Informations Personnelles */}
           {activeTab === 'perso' && (
