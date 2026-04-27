@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
@@ -49,68 +49,114 @@ const IdentificationForm = () => {
   const [filteredDate, setFilteredDate] = useState('');
   const [loadingCollaborators, setLoadingCollaborators] = useState(false);
 
-  const [formData, setFormData] = useState({
-    dateInsertion: new Date().toISOString().split('T')[0],
-    matricule: '',
-    nom: '',
-    prenoms: '',
-    contrat: '',
-    adresse: '',
-    genre: 'M',
-    dateNaissance: '',
-    lieuNaissance: '',
-    numeroCIN: '',
-    dateDelivrance: '',
-    lieuDelivrance: '',
-    nationalite: 'Malagasy',
-    ethenie: '',
-    contactPersonnel: '',
-    numeroMvola: '',
-    nomPersonneUrgence: '',
-    numeroUrgence: '',
-    emailPersonnel: '',
-    situationFamiliale: 'Célibataire',
-    nomConjoint: '',
-    prenomsConjoint: '',
-    dateMariage: '',
-    nombreEnfants: 0,
-    enfants: [],
-    numeroCnaps: '',
-    vaccin: 'Non',
-    diplomes: [{ nom: '', domaine: '' }],
-    langues: [
-      { nom: '', niveau: '' }
-    ],
-    dialecte: { nom: '', niveau: '' },
-    ancienPosteConnecteo: false,
-    formerPositions: [],
-    formations: false,
-    formationsList: [{ nom: '' }]
+  const [formData, setFormData] = useState(() => {
+    const defaultData = {
+      dateInsertion: new Date().toISOString().split('T')[0],
+      matricule: '',
+      nom: '',
+      prenoms: '',
+      contrat: '',
+      adresse: '',
+      genre: 'M',
+      dateNaissance: '',
+      lieuNaissance: '',
+      numeroCIN: '',
+      dateDelivrance: '',
+      lieuDelivrance: '',
+      nationalite: 'Malagasy',
+      ethenie: '',
+      contactPersonnel: '',
+      numeroMvola: '',
+      nomPersonneUrgence: '',
+      numeroUrgence: '',
+      emailPersonnel: '',
+      situationFamiliale: 'Célibataire',
+      nomConjoint: '',
+      prenomsConjoint: '',
+      dateMariage: '',
+      nombreEnfants: 0,
+      enfants: [],
+      numeroCnaps: '',
+      vaccin: 'Non',
+      diplomes: [{ nom: '', domaine: '' }],
+      langues: [
+        { nom: '', niveau: '' }
+      ],
+      dialecte: { nom: '', niveau: '' },
+      ancienPosteConnecteo: false,
+      formerPositions: [],
+      formations: false,
+      formationsList: [{ nom: '' }]
+    };
+
+    if (typeof window === 'undefined') return defaultData;
+
+    try {
+      const savedData = window.localStorage.getItem('identificationFormData');
+      if (!savedData) return defaultData;
+      const parsed = JSON.parse(savedData);
+      if (parsed && typeof parsed === 'object') {
+        return { ...defaultData, ...parsed };
+      }
+    } catch {
+      // Si la donnée locale est invalide, démarrer avec les valeurs par défaut
+    }
+
+    return defaultData;
   });
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const clearWarningMessage = () => {
+    if (message && (message.startsWith('⚠️') || message.startsWith('✗'))) {
+      setMessage('');
+    }
+  };
+
+  useEffect(() => {
+    window.localStorage.setItem('identificationFormData', JSON.stringify(formData));
+  }, [formData]);
+
   const triggerFireGlow = () => {
     setNavbarGlow(true);
     setTimeout(() => setNavbarGlow(false), 600);
   };
 
+  const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  const isNineDigitNumber = (value) => /^\d{9}$/.test(String(value).replace(/\s/g, ''));
+
   const isAllFieldsComplete = () => {
-    return formData.matricule &&
-           formData.nom &&
-           formData.prenoms &&
-           formData.contrat &&
-           formData.adresse &&
-           formData.dateNaissance &&
-           formData.lieuNaissance &&
-           formData.numeroCIN &&
-           formData.dateDelivrance &&
-           formData.lieuDelivrance &&
-           formData.contactPersonnel &&
-           formData.nomPersonneUrgence &&
-           formData.numeroUrgence;
+    const basicComplete = isPersonalInfoComplete() &&
+                          formData.emailPersonnel &&
+                          isEmailValid(formData.emailPersonnel) &&
+                          isContactInfoComplete();
+
+    if (!basicComplete) return false;
+
+    if (formData.dateNaissance && formData.dateDelivrance) {
+      if (new Date(formData.dateNaissance) >= new Date(formData.dateDelivrance)) {
+        return false;
+      }
+    }
+
+    if (formData.situationFamiliale === 'Marié(e)') {
+      if (!formData.nomConjoint || !formData.prenomsConjoint || !formData.dateMariage) {
+        return false;
+      }
+    }
+
+    if (formData.nombreEnfants > 0) {
+      if (!Array.isArray(formData.enfants) || formData.enfants.length !== formData.nombreEnfants) {
+        return false;
+      }
+      if (!formData.enfants.every(e => e.nom && e.dateNaissance)) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const isPersonalInfoComplete = () => {
@@ -159,9 +205,7 @@ const IdentificationForm = () => {
   };
 
   const isFormationComplete = () => {
-    const hasLangues = formData.langues && formData.langues.length > 0 &&
-                       formData.langues.some(l => l.nom && l.niveau);
-    return hasLangues; // Formations et ancien poste sont optionnels, pas bloquants
+    return isDiplomeInfoComplete() || isLanguesInfoComplete(); // Formations et ancien poste sont optionnels, pas bloquants
   };
 
   const fetchCollaborators = async () => {
@@ -225,7 +269,7 @@ const IdentificationForm = () => {
       };
       
       // Timeout de 8 secondes avant fallback
-      const timeoutId = setTimeout(() => {
+setTimeout(() => {
         if (isTimeout && window[callbackName]) {
           console.warn('⏱️ Timeout JSONP - Utilisation des données de test');
           delete window[callbackName];
@@ -289,13 +333,13 @@ const IdentificationForm = () => {
     
     // Contact personnel: 9 chiffres, pas d'espace
     if (!formData.contactPersonnel) newErrors.contactPersonnel = 'Contact obligatoire';
-    else if (!/^\d{9}$/.test(formData.contactPersonnel.replace(/\s/g, ''))) newErrors.contactPersonnel = '9 chiffres (sans espaces)';
+    else if (!isNineDigitNumber(formData.contactPersonnel)) newErrors.contactPersonnel = '9 chiffres (sans espaces)';
     
     if (!formData.nomPersonneUrgence) newErrors.nomPersonneUrgence = 'Nom obligatoire';
     
     // Numéro d'urgence: 9 chiffres, pas d'espace
     if (!formData.numeroUrgence) newErrors.numeroUrgence = 'Numéro obligatoire';
-    else if (!/^\d{9}$/.test(formData.numeroUrgence.replace(/\s/g, ''))) newErrors.numeroUrgence = '9 chiffres (sans espaces)';
+    else if (!isNineDigitNumber(formData.numeroUrgence)) newErrors.numeroUrgence = '9 chiffres (sans espaces)';
     
     if (!formData.emailPersonnel) newErrors.emailPersonnel = 'Email obligatoire';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailPersonnel)) newErrors.emailPersonnel = 'Email invalide';
@@ -355,12 +399,12 @@ const IdentificationForm = () => {
 
       case 'contactPersonnel':
         if (!value) error = 'Contact obligatoire';
-        else if (!/^\d{9}$/.test(value.replace(/\s/g, ''))) error = '9 chiffres (sans espaces)';
+        else if (!isNineDigitNumber(value)) error = '9 chiffres (sans espaces)';
         break;
 
       case 'numeroUrgence':
         if (!value) error = 'Numéro obligatoire';
-        else if (!/^\d{9}$/.test(value.replace(/\s/g, ''))) error = '9 chiffres (sans espaces)';
+        else if (!isNineDigitNumber(value)) error = '9 chiffres (sans espaces)';
         break;
 
       case 'numeroMvola':
@@ -450,6 +494,7 @@ const IdentificationForm = () => {
     }
 
     setErrors(newErrors);
+    clearWarningMessage();
   };
 
   const handleNombreEnfants = (e) => {
@@ -463,18 +508,21 @@ const IdentificationForm = () => {
       nombreEnfants: nombre,
       enfants: newEnfants
     }));
+    clearWarningMessage();
   };
 
   const handleEnfantChange = (index, field, value) => {
     const updatedEnfants = [...formData.enfants];
     updatedEnfants[index] = { ...updatedEnfants[index], [field]: value };
     setFormData(prev => ({ ...prev, enfants: updatedEnfants }));
+    clearWarningMessage();
   };
 
   const handleDiplomeChange = (index, field, value) => {
     const updatedDiplomes = [...formData.diplomes];
     updatedDiplomes[index] = { ...updatedDiplomes[index], [field]: value };
     setFormData(prev => ({ ...prev, diplomes: updatedDiplomes }));
+    clearWarningMessage();
   };
 
   const addDiplome = () => {
@@ -490,6 +538,7 @@ const IdentificationForm = () => {
     const updatedLangues = [...formData.langues];
     updatedLangues[index] = { ...updatedLangues[index], [field]: value };
     setFormData(prev => ({ ...prev, langues: updatedLangues }));
+    clearWarningMessage();
   };
 
   const handleAddLangue = () => {
@@ -525,6 +574,7 @@ const IdentificationForm = () => {
       ancienPosteConnecteo: isChecked,
       formerPositions: isChecked ? prev.formerPositions : []
     }));
+    clearWarningMessage();
   };
 
   const handleAddPosition = () => {
@@ -545,6 +595,7 @@ const IdentificationForm = () => {
     const updatedPositions = [...formData.formerPositions];
     updatedPositions[index] = { poste: value };
     setFormData(prev => ({ ...prev, formerPositions: updatedPositions }));
+    clearWarningMessage();
   };
 
   const handleFormationsToggle = (e) => {
@@ -554,6 +605,7 @@ const IdentificationForm = () => {
       formations: isChecked,
       formationsList: isChecked ? prev.formationsList : []
     }));
+    clearWarningMessage();
   };
 
   const handleFormationChange = (index, value) => {
@@ -716,6 +768,7 @@ const IdentificationForm = () => {
         formations: false,
         formationsList: [{ nom: '' }]
       });
+      window.localStorage.removeItem('identificationFormData');
     } catch (error) {
       setMessage('✗ Erreur: ' + error.message);
     }
@@ -725,29 +778,27 @@ const IdentificationForm = () => {
 
   return (
     <div className="app-wrapper">
-      <nav className={`form-navbar ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'navbar-complete' : ''}`}>
-        <div className="navbar-content">
-          <img src="/connecteo.png" alt="Connecteo Logo" className="navbar-logo" />
-          <h1 className="navbar-title"><span className="title-icon">📋</span><span className="title-text">Formulaire d'Identification</span></h1>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button type="button" className="navbar-btn-submit" onClick={(e) => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
+      <aside className={`form-sidebar ${navbarGlow ? 'fire-glow' : ''} ${isAllFieldsComplete() ? 'sidebar-complete' : ''}`}>
+        <div className="sidebar-content">
+          <img src="/connecteo.png" alt="Connecteo Logo" className="sidebar-logo" />
+          <h1 className="sidebar-title"><span className="title-icon">📋</span><span className="title-text">Formulaire d'Identification</span></h1>
+          <div className="sidebar-buttons">
+            <button type="button" className="sidebar-btn-submit" onClick={() => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
               <span className="btn-emoji">👥</span><span className="btn-text"> Collaborateurs</span>
             </button>
-            <button type="button" className="navbar-btn-submit" onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
+            <button type="button" className="sidebar-btn-submit" onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
               <span className="btn-emoji">{loading ? '⏳' : '✓'}</span><span className="btn-text"> {loading ? 'Enregistrement...' : 'Enregistrer'}</span>
             </button>
           </div>
+          <div className="sidebar-status">{isAllFieldsComplete() ? "✅ Tous les champs sont complets" : "⚠️ Certains champs manquent"}</div>
+          <nav className="sidebar-tabs">
+            <TabButton activeTab={activeTab} id="perso" label="📝 Informations Personnelles" onClick={() => { triggerFireGlow(); setActiveTab('perso'); }} isComplete={isPersonalInfoComplete()} />
+            <TabButton activeTab={activeTab} id="contact" label="📞 Contact" onClick={() => { triggerFireGlow(); setActiveTab('contact'); }} isComplete={isContactInfoComplete()} />
+            <TabButton activeTab={activeTab} id="famille" label="👨‍👩‍👧‍👦 Situation Familiale" onClick={() => { triggerFireGlow(); setActiveTab('famille'); }} isComplete={isFamilyInfoComplete()} />
+            <TabButton activeTab={activeTab} id="diplome" label="🎓 Formation" onClick={() => { triggerFireGlow(); setActiveTab('diplome'); }} isComplete={isFormationComplete()} />
+          </nav>
         </div>
-      </nav>
-
-      <nav className="section-tabs">
-        <div className="tabs-container">
-          <TabButton activeTab={activeTab} id="perso" label="📝 Informations Personnelles" onClick={() => { triggerFireGlow(); setActiveTab('perso'); }} isComplete={isPersonalInfoComplete()} />
-          <TabButton activeTab={activeTab} id="contact" label="📞 Contact" onClick={() => { triggerFireGlow(); setActiveTab('contact'); }} isComplete={isContactInfoComplete()} />
-          <TabButton activeTab={activeTab} id="famille" label="👨‍👩‍👧‍👦 Situation Familiale" onClick={() => { triggerFireGlow(); setActiveTab('famille'); }} isComplete={isFamilyInfoComplete()} />
-          <TabButton activeTab={activeTab} id="diplome" label="🎓 Formation" onClick={() => { triggerFireGlow(); setActiveTab('diplome'); }} isComplete={isFormationComplete()} />
-        </div>
-      </nav>
+      </aside>
 
       <div className="form-container">
         <form onSubmit={handleSubmit}>
