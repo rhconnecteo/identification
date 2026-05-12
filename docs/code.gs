@@ -19,64 +19,74 @@ const COLUMN_MAP = {
   'Matricule': 1,
   'Nom et Prénoms': 2,
   'Contrat': 3,
-  'Genre': 4,
-  'Date de naissance': 5,
-  'Lieu de naissance': 6,
-  'Adresse': 7,
-  'Numéro CIN': 8,
-  'Date de délivrance': 9,
-  'Lieu de délivrance': 10,
-  'Nationalité': 11,
-  'Ethenie': 12,
-  'Contact personnel': 13,
-  'Numéro Mvola': 14,
-  'Nom de personne à contact au cas d\'urgence': 15,
-  'Numéro d\'urgence': 16,
-  'Email personnel': 17,
-  'Situation familiale': 18,
-  'Nom et prénoms de conjoint': 19,
-  'Date de mariage': 20,
-  // Enfants 1-9 (colonnes 21-38)
-  'Nom enfant 1': 21,
-  'date de naissance 1': 22,
-  'Nom enfant 2': 23,
-  'date de naissance 2': 24,
-  'Nom enfant 3': 25,
-  'date de naissance 3': 26,
-  'Nom enfant 4': 27,
-  'date de naissance 4': 28,
-  'Nom enfant 5': 29,
-  'date de naissance 5': 30,
-  'Nom enfant 6': 31,
-  'date de naissance 6': 32,
-  'Nom enfant 7': 33,
-  'date de naissance 7': 34,
-  'Nom enfant 8': 35,
-  'date de naissance 8': 36,
-  'Nom enfant 9': 37,
-  'date de naissance 9': 38,
-  // CNAPS + Vaccin (colonnes 39-40)
-  'Numéro Cnaps': 39,
-  'Vaccin COVID 19': 40,
-  // Diplômes 1-4 (colonnes 41-48)
-  'Diplomes obtenues 1': 41,
-  'Domaine d\'étude 1': 42,
-  'Diplomes obtenues 2': 43,
-  'Domaine d\'étude 2': 44,
-  'Diplomes obtenues 3': 45,
-  'Domaine d\'étude 3': 46,
-  'Autres': 47,
-  'Domaine d\'étude 4': 48,
-  // Langues 1-3 (colonnes 49-54)
-  'Langues 1': 49,
-  'Niveau 1': 50,
-  'Langues 2': 51,
-  'Niveau 2': 52,
-  'Autres langues': 53,
-  'Niveau 3': 54,
-  // Dialecte + Niveau (colonnes 55-56)
-  'Dialecte': 55,
-  'Niveau': 56,
+  'Date d\'intégration': 4,
+  'Genre': 5,
+  'Fonction': 6,
+  'Rattachement': 7,
+  'Date de naissance': 8,
+  'Lieu de naissance': 9,
+  'Adresse': 10,
+  'Numéro CIN': 11,
+  'Date de délivrance': 12,
+  'Lieu de délivrance': 13,
+  'Nationalité': 14,
+  'Ethenie': 15,
+  'Contact personnel': 16,
+  'Numéro Mvola': 17,
+  'Nom de personne à contact au cas d\'urgence': 18,
+  'Numéro d\'urgence': 19,
+  'Email personnel': 20,
+  'Situation familiale': 21,
+  'Nom et prénoms de conjoint': 22,
+  'Date de mariage': 23,
+  // Enfants 1-9 (colonnes 24-41)
+  'Nom enfant 1': 24,
+  'date de naissance 1': 25,
+  'Nom enfant 2': 26,
+  'date de naissance 2': 27,
+  'Nom enfant 3': 28,
+  'date de naissance 3': 29,
+  'Nom enfant 4': 30,
+  'date de naissance 4': 31,
+  'Nom enfant 5': 32,
+  'date de naissance 5': 33,
+  'Nom enfant 6': 34,
+  'date de naissance 6': 35,
+  'Nom enfant 7': 36,
+  'date de naissance 7': 37,
+  'Nom enfant 8': 38,
+  'date de naissance 8': 39,
+  'Nom enfant 9': 40,
+  'date de naissance 9': 41,
+  // CNAPS + Vaccin (colonnes 42-43)
+  'Numéro Cnaps': 42,
+  'Vaccin COVID 19': 43,
+  // Diplômes 1-4 (colonnes 44-51)
+  'Diplomes obtenues 1': 44,
+  'Domaine d\'étude 1': 45,
+  'Diplomes obtenues 2': 46,
+  'Domaine d\'étude 2': 47,
+  'Diplomes obtenues 3': 48,
+  'Domaine d\'étude 3': 49,
+  'Autres': 50,
+  'Domaine d\'étude 4': 51,
+  // Formations 1-3 (colonnes 52-54) - BA, BB, BC
+  'Formation 1': 52,
+  'Formation 2': 53,
+  'Formation 3': 54,
+  // Ancien poste chez Connecteo 1-2 (colonnes 55-56) - BD, BE
+  'ancien poste chez connecteo 1': 55,
+  'ancien poste chez connecteo 2': 56,
+  // Langues 1-3 (colonnes 57-62) - BF..BK
+  'Langues 1': 57,
+  'Niveau 1': 58,
+  'Langues 2': 59,
+  'Niveau 2': 60,
+  'Autres langues': 61,
+  'Niveau 3': 62,
+  // Dialecte + Niveau (colonnes 63-64) - BL-BM
+  'Dialecte': 63,
+  'Niveau': 64,
 };
 
 /* =====================================================
@@ -99,6 +109,9 @@ function doGet(e) {
 
       case "getUsers":
         return outputJSON(getUsersAPI(), callback);
+
+      case "getPosteOptions":
+        return outputJSON(getPosteOptionsAPI(), callback);
 
       case "saveUser":
         if (!e.parameter.data) {
@@ -230,7 +243,42 @@ function getUsersAPI() {
 }
 
 /* =====================================================
-   5) saveUserAPI(user)
+   5) getPosteOptionsAPI()
+   Récupère la liste des fonctions et rattachements
+   depuis la feuille "Grande liste" (A = Fonction, B = Rattachement)
+===================================================== */
+function getPosteOptionsAPI() {
+  try {
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Grande liste');
+    if (!sh) {
+      throw new Error("Feuille 'Grande liste' introuvable");
+    }
+
+    const data = sh.getDataRange().getValues();
+    const result = [];
+    const seen = {};
+
+    // On saute l'entête et on lit: A = Fonction, B = Rattachement
+    for (let i = 1; i < data.length; i++) {
+      const fonction = (data[i][0] || '').toString().trim();
+      const rattachement = (data[i][1] || '').toString().trim();
+      if (!fonction) continue;
+
+      const key = fonction + '||' + rattachement;
+      if (seen[key]) continue;
+      seen[key] = true;
+
+      result.push({ fonction: fonction, rattachement: rattachement });
+    }
+
+    return result;
+  } catch (error) {
+    throw new Error("Erreur getPosteOptionsAPI: " + error.toString());
+  }
+}
+
+/* =====================================================
+   6) saveUserAPI(user)
    Enregistre un nouvel utilisateur dans la feuille
    
    Utilise le COLUMN_MAP pour mapper les noms → index
@@ -245,7 +293,7 @@ function saveUserAPI(user) {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
     
     // Construire une ligne vide avec le bon nombre de colonnes
-    const newRow = new Array(57); // 57 colonnes au total
+    const newRow = new Array(65); // 65 colonnes au total (indices 0..64)
 
     // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
     for (let fieldName in user) {

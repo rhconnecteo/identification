@@ -2,22 +2,32 @@ import React, { useState, useEffect } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF5WeyFiD--83h9mZ4UbB2gnUHNqRYraRg9GdFuO-ul9RVrKa9ew0BZrTX5n6WY_YBvg/exec";
-const ETHNICITIES = ['Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Mahafaly', 'Autre'];
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDA8E0A-bpHL8laRQoapGT4BpCaPeW5l2qNpg8Ou-hoTwNtRjK4siqboWf4VQLLTcM9w/exec";
+const ETHNICITIES = ['Antakarana','Mahafaly','Bara','Antemoro','Tsimihety','Vezo','Antefasy','Tanala','Antanosy','Antambahoaka','Bezanozano','Antesaka','Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
 const LANGUAGES = ['Anglais', 'Français', 'Espagnol', 'Chinois', 'Autre'];
-const LEVELS = ['Débutant', 'Intermédiaire', 'Avancé', 'Courant'];
+const LEVELS = ['Débutant', 'Intermédiaire', 'Avancé', 'Maîtrise'];
 const FAMILY_STATUS = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)'];
 
 // Sub-components moved outside to prevent recreation on each render (fixes focus loss issue)
-const FormField = ({ label, name, type = 'text', value, onChange, error, required = false, ...props }) => (
-  <div className="form-group">
-    <label>{label} {required && <span className="required-asterisk">*</span>}</label>
-    <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} {...props} />
-    {error && <span className="error-message">{error}</span>}
-  </div>
-);
+const FormField = ({ label, name, type = 'text', value, onChange, error, required = false, ...props }) => {
+  const isPhoneField = ['contactPersonnel', 'numeroMvola', 'numeroUrgence'].includes(name);
+  return (
+    <div className="form-group">
+      <label>{label} {required && <span className="required-asterisk">*</span>}</label>
+      {isPhoneField ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontWeight: 'bold', color: '#333' }}>+261</span>
+          <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} placeholder="3" {...props} style={{ flex: 1 }} />
+        </div>
+      ) : (
+        <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} {...props} />
+      )}
+      {error && <span className="error-message">{error}</span>}
+    </div>
+  );
+};
 
 const FormSelect = ({ label, name, value, onChange, options, error, required = false }) => (
   <div className="form-group">
@@ -66,6 +76,7 @@ const IdentificationForm = () => {
       nom: '',
       prenoms: '',
       contrat: '',
+      dateIntegration: '',
       adresse: '',
       genre: 'M',
       fonction: '',
@@ -136,6 +147,53 @@ const IdentificationForm = () => {
     setTimeout(() => setNavbarGlow(false), 600);
   };
 
+  const buildPosteOptionsFromUsers = (usersData) => {
+    if (!Array.isArray(usersData)) return [];
+    const seen = new Set();
+    const options = [];
+
+    usersData.forEach((user) => {
+      const fonction = (user?.['Fonction'] || '').toString().trim();
+      const rattachement = (user?.['Rattachement'] || '').toString().trim();
+      if (!fonction) return;
+
+      const key = `${fonction}||${rattachement}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      options.push({ fonction, rattachement });
+    });
+
+    return options;
+  };
+
+  const fetchPosteOptionsFallback = () => {
+    const callbackName = 'jsonpPosteFallback_' + Date.now();
+    window[callbackName] = (data) => {
+      const fallbackOptions = buildPosteOptionsFromUsers(data);
+      setPosteOptions(fallbackOptions);
+      setPosteError(fallbackOptions.length ? '' : 'Aucune suggestion disponible');
+      setPosteLoading(false);
+      if (document.head.contains(scriptTag)) {
+        document.head.removeChild(scriptTag);
+      }
+      delete window[callbackName];
+    };
+
+    const scriptTag = document.createElement('script');
+    scriptTag.src = `${SCRIPT_URL}?action=getUsers&callback=${callbackName}`;
+    scriptTag.async = true;
+    scriptTag.onerror = () => {
+      setPosteOptions([]);
+      setPosteError('Impossible de charger les options de poste');
+      setPosteLoading(false);
+      if (document.head.contains(scriptTag)) {
+        document.head.removeChild(scriptTag);
+      }
+      delete window[callbackName];
+    };
+    document.head.appendChild(scriptTag);
+  };
+
   const fetchPosteOptions = async () => {
     setPosteLoading(true);
     setPosteError('');
@@ -144,8 +202,12 @@ const IdentificationForm = () => {
 
     window[callbackName] = (data) => {
       isTimeout = false;
-      setPosteOptions(Array.isArray(data) ? data : []);
-      setPosteLoading(false);
+      if (Array.isArray(data)) {
+        setPosteOptions(data);
+        setPosteLoading(false);
+      } else {
+        fetchPosteOptionsFallback();
+      }
       if (document.head.contains(scriptTag)) {
         document.head.removeChild(scriptTag);
       }
@@ -158,9 +220,7 @@ const IdentificationForm = () => {
 
     scriptTag.onerror = () => {
       isTimeout = false;
-      setPosteOptions([]);
-      setPosteError('Impossible de charger les options de poste');
-      setPosteLoading(false);
+      fetchPosteOptionsFallback();
       if (document.head.contains(scriptTag)) {
         document.head.removeChild(scriptTag);
       }
@@ -169,9 +229,7 @@ const IdentificationForm = () => {
 
     setTimeout(() => {
       if (isTimeout && window[callbackName]) {
-        setPosteOptions([]);
-        setPosteError('Délai dépassé pour le chargement des postes');
-        setPosteLoading(false);
+        fetchPosteOptionsFallback();
         if (document.head.contains(scriptTag)) {
           document.head.removeChild(scriptTag);
         }
@@ -182,7 +240,10 @@ const IdentificationForm = () => {
   };
 
   const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  const isNineDigitNumber = (value) => /^\d{9}$/.test(String(value).replace(/\s/g, ''));
+  const isMadagascarPhoneNumber = (value) => {
+    const cleanValue = String(value).replace(/\s/g, '');
+    return /^3\d{8}$/.test(cleanValue); // Commence par 3, 9 chiffres au total
+  };
 
   const isAllFieldsComplete = () => {
     const basicComplete = isPersonalInfoComplete() &&
@@ -258,7 +319,7 @@ const IdentificationForm = () => {
   };
 
   const isPosteComplete = () => {
-    return formData.fonction && formData.rattachement;
+    return formData.fonction && formData.rattachement && formData.dateIntegration;
   };
 
   const isDiplomeInfoComplete = () => {
@@ -396,6 +457,7 @@ setTimeout(() => {
     if (!formData.nom) newErrors.nom = 'Nom obligatoire';
     if (!formData.prenoms) newErrors.prenoms = 'Prénoms obligatoires';
     if (!formData.contrat) newErrors.contrat = 'Contrat obligatoire';
+    if (!formData.dateIntegration) newErrors.dateIntegration = 'Date d\'intégration obligatoire';
     if (!formData.adresse) newErrors.adresse = 'Adresse obligatoire';
     if (!formData.dateNaissance) newErrors.dateNaissance = 'Date de naissance obligatoire';
     if (!formData.lieuNaissance) newErrors.lieuNaissance = 'Lieu de naissance obligatoire';
@@ -403,15 +465,15 @@ setTimeout(() => {
     if (!formData.dateDelivrance) newErrors.dateDelivrance = 'Date de délivrance obligatoire';
     if (!formData.lieuDelivrance) newErrors.lieuDelivrance = 'Lieu de délivrance obligatoire';
     
-    // Contact personnel: 9 chiffres, pas d'espace
+    // Contact personnel: doit commencer par 3
     if (!formData.contactPersonnel) newErrors.contactPersonnel = 'Contact obligatoire';
-    else if (!isNineDigitNumber(formData.contactPersonnel)) newErrors.contactPersonnel = '9 chiffres (sans espaces)';
+    else if (!isMadagascarPhoneNumber(formData.contactPersonnel)) newErrors.contactPersonnel = 'Doit commencer par 3 (9 chiffres)';
     
     if (!formData.nomPersonneUrgence) newErrors.nomPersonneUrgence = 'Nom obligatoire';
     
-    // Numéro d'urgence: 9 chiffres, pas d'espace
+    // Numéro d'urgence: doit commencer par 3
     if (!formData.numeroUrgence) newErrors.numeroUrgence = 'Numéro obligatoire';
-    else if (!isNineDigitNumber(formData.numeroUrgence)) newErrors.numeroUrgence = '9 chiffres (sans espaces)';
+    else if (!isMadagascarPhoneNumber(formData.numeroUrgence)) newErrors.numeroUrgence = 'Doit commencer par 3 (9 chiffres)';
     
     if (!formData.emailPersonnel) newErrors.emailPersonnel = 'Email obligatoire';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailPersonnel)) newErrors.emailPersonnel = 'Email invalide';
@@ -419,8 +481,8 @@ setTimeout(() => {
     if (!formData.fonction) newErrors.fonction = 'Fonction obligatoire';
     if (!formData.rattachement) newErrors.rattachement = 'Rattachement obligatoire';
     
-    // Numéro Mvola: 9 chiffres, pas d'espace (si rempli)
-    if (formData.numeroMvola && !/^\d{9}$/.test(formData.numeroMvola.replace(/\s/g, ''))) newErrors.numeroMvola = '9 chiffres (sans espaces)';
+    // Numéro Mvola: optionnel mais doit commencer par 3 s'il est fourni
+    if (formData.numeroMvola && !isMadagascarPhoneNumber(formData.numeroMvola)) newErrors.numeroMvola = 'Doit commencer par 3 (9 chiffres)';
     
     // Numéro CNAPS: 9 chiffres, pas d'espace (si rempli)
     if (formData.numeroCnaps && !/^\d{9}$/.test(formData.numeroCnaps.replace(/\s/g, ''))) newErrors.numeroCnaps = '9 chiffres (sans espaces)';
@@ -474,16 +536,16 @@ setTimeout(() => {
 
       case 'contactPersonnel':
         if (!value) error = 'Contact obligatoire';
-        else if (!isNineDigitNumber(value)) error = '9 chiffres (sans espaces)';
+        else if (!isMadagascarPhoneNumber(value)) error = 'Doit commencer par 3 (9 chiffres)';
         break;
 
       case 'numeroUrgence':
         if (!value) error = 'Numéro obligatoire';
-        else if (!isNineDigitNumber(value)) error = '9 chiffres (sans espaces)';
+        else if (!isMadagascarPhoneNumber(value)) error = 'Doit commencer par 3 (9 chiffres)';
         break;
 
       case 'numeroMvola':
-        if (value && /\s/.test(value)) error = 'Pas d\'espaces autorisés';
+        if (value && !isMadagascarPhoneNumber(value)) error = 'Doit commencer par 3 (9 chiffres)';
         break;
 
       case 'numeroCnaps':
@@ -513,6 +575,10 @@ setTimeout(() => {
 
       case 'contrat':
         if (!value) error = 'Contrat obligatoire';
+        break;
+
+      case 'dateIntegration':
+        if (!value) error = 'Date d\'intégration obligatoire';
         break;
 
       case 'adresse':
@@ -737,6 +803,7 @@ setTimeout(() => {
         'Matricule': formData.matricule,
         'Nom et Prénoms': `${formData.nom} ${formData.prenoms}`,
         'Contrat': formData.contrat,
+        'Date d\'intégration': formData.dateIntegration,
         'Genre': formData.genre,
         'Fonction': formData.fonction,
         'Rattachement': formData.rattachement,
@@ -830,6 +897,7 @@ setTimeout(() => {
         nom: '',
         prenoms: '',
         contrat: '',
+        dateIntegration: '',
         adresse: '',
         genre: 'M',
         fonction: '',
@@ -967,6 +1035,9 @@ setTimeout(() => {
                   placeholder="Rechercher une fonction..."
                   list="fonction-options"
                 />
+                <FormField label="Date d'intégration" name="dateIntegration" type="date" value={formData.dateIntegration} onChange={handleInputChange} error={errors.dateIntegration} required />
+              </div>
+              <div className="form-row">
                 <FormField
                   label="Rattachement"
                   name="rattachement"
