@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDA8E0A-bpHL8laRQoapGT4BpCaPeW5l2qNpg8Ou-hoTwNtRjK4siqboWf4VQLLTcM9w/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxz8BDxh5Nin3FoHUQNGR4RA53XFfuX57XzhlwQfVnmuS3nGBcoaTNG4eMaggLS_eyo5A/exec";
 const ETHNICITIES = ['Antakarana','Mahafaly','Bara','Antemoro','Tsimihety','Vezo','Antefasy','Tanala','Antanosy','Antambahoaka','Bezanozano','Antesaka','Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -13,6 +13,8 @@ const FAMILY_STATUS = ['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)'];
 // Sub-components moved outside to prevent recreation on each render (fixes focus loss issue)
 const FormField = ({ label, name, type = 'text', value, onChange, error, required = false, ...props }) => {
   const isPhoneField = ['contactPersonnel', 'numeroMvola', 'numeroUrgence'].includes(name);
+  const isCNAPSField = name === 'numeroCnaps';
+  
   return (
     <div className="form-group">
       <label>{label} {required && <span className="required-asterisk">*</span>}</label>
@@ -21,6 +23,8 @@ const FormField = ({ label, name, type = 'text', value, onChange, error, require
           <span style={{ fontWeight: 'bold', color: '#333' }}>+261</span>
           <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} placeholder="3" {...props} style={{ flex: 1 }} />
         </div>
+      ) : isCNAPSField ? (
+        <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} placeholder="Optionnel" {...props} />
       ) : (
         <input type={type} name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} {...props} />
       )}
@@ -63,6 +67,8 @@ const IdentificationForm = () => {
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [collaborators, setCollaborators] = useState([]);
   const [filteredDate, setFilteredDate] = useState('');
+  const [filteredMatricule, setFilteredMatricule] = useState('');
+  const [filteredFonction, setFilteredFonction] = useState('');
   const [loadingCollaborators, setLoadingCollaborators] = useState(false);
   const [posteOptions, setPosteOptions] = useState([]);
   const [fonctionQuery, setFonctionQuery] = useState('');
@@ -339,27 +345,35 @@ const IdentificationForm = () => {
   const fetchCollaborators = async () => {
     setLoadingCollaborators(true);
     try {
-      // Fallback: données de test en cas d'erreur JSONP
+      // Données de test avec les bons champs
       const testData = [
         {
           "Date d'insertion": "2026-04-12",
           "Matricule": "CN01205",
-          "Nom et Prénoms": "rabe"
+          "Nom et Prénoms": "RAKOTO Jean",
+          "Fonction": "Développeur",
+          "Date d'intégration": "2026-01-15"
         },
         {
           "Date d'insertion": "2026-04-12",
           "Matricule": "CN01105",
-          "Nom et Prénoms": "fyukhkhiiu"
+          "Nom et Prénoms": "RAMANDIMBY Fy",
+          "Fonction": "RH",
+          "Date d'intégration": "2025-03-10"
         },
         {
           "Date d'insertion": "2026-04-12",
           "Matricule": "CN00262",
-          "Nom et Prénoms": "rabe"
+          "Nom et Prénoms": "RABEMANANJARA Herizo",
+          "Fonction": "Comptable",
+          "Date d'intégration": "2026-01-20"
         },
         {
           "Date d'insertion": "2026-04-12",
-          "Matricule": "CN01105",
-          "Nom et Prénoms": "RAMBOAMIARISON Herizo Radilison"
+          "Matricule": "CN01106",
+          "Nom et Prénoms": "RAMBOAMIARISON Herizo Radilison",
+          "Fonction": "Manager",
+          "Date d'intégration": "2025-06-20"
         }
       ];
 
@@ -397,7 +411,7 @@ const IdentificationForm = () => {
       };
       
       // Timeout de 8 secondes avant fallback
-setTimeout(() => {
+      setTimeout(() => {
         if (isTimeout && window[callbackName]) {
           console.warn('⏱️ Timeout JSONP - Utilisation des données de test');
           delete window[callbackName];
@@ -426,11 +440,26 @@ setTimeout(() => {
   };
 
   const getFilteredCollaborators = () => {
-    if (!filteredDate) return collaborators;
     return collaborators.filter(c => {
-      // Comparer les dates correctement en corrigeant le décalage timezone
-      const dateInSheet = c["Date d'insertion"] || '';
-      return dateInSheet === filteredDate;
+      // Filtre par date d'intégration
+      if (filteredDate) {
+        const dateIntegration = c["Date d'intégration"] || '';
+        if (dateIntegration !== filteredDate) return false;
+      }
+      
+      // Filtre par matricule (recherche partielle, insensible à la casse)
+      if (filteredMatricule) {
+        const matricule = (c['Matricule'] || '').toString().toLowerCase();
+        if (!matricule.includes(filteredMatricule.toLowerCase())) return false;
+      }
+      
+      // Filtre par fonction (recherche partielle, insensible à la casse)
+      if (filteredFonction) {
+        const fonction = (c['Fonction'] || '').toString().toLowerCase();
+        if (!fonction.includes(filteredFonction.toLowerCase())) return false;
+      }
+      
+      return true;
     });
   };
 
@@ -484,8 +513,8 @@ setTimeout(() => {
     // Numéro Mvola: optionnel mais doit commencer par 3 s'il est fourni
     if (formData.numeroMvola && !isMadagascarPhoneNumber(formData.numeroMvola)) newErrors.numeroMvola = 'Doit commencer par 3 (9 chiffres)';
     
-    // Numéro CNAPS: 9 chiffres, pas d'espace (si rempli)
-    if (formData.numeroCnaps && !/^\d{9}$/.test(formData.numeroCnaps.replace(/\s/g, ''))) newErrors.numeroCnaps = '9 chiffres (sans espaces)';
+    // Numéro CNAPS: optionnel, accepte n'importe quelle valeur
+    // Pas de validation pour CNAPS
 
     // Validation: Date de naissance < Date de délivrance
     if (formData.dateNaissance && formData.dateDelivrance) {
@@ -549,7 +578,8 @@ setTimeout(() => {
         break;
 
       case 'numeroCnaps':
-        if (value && /\s/.test(value)) error = 'Pas d\'espaces autorisés';
+        // CNAPS est optionnel, accepter n'importe quelle valeur
+        // Pas d'erreur
         break;
 
       case 'emailPersonnel':
@@ -1217,54 +1247,6 @@ setTimeout(() => {
             </div>
           )}
 
-          {/* Tab: Voir Collaborateurs */}
-          {activeTab === 'voir' && (
-            <div className="tab-content">
-              <h3>👥 Collaborateurs Insérés</h3>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label>Filtrer par date d'insertion:</label>
-                <input 
-                  type="date" 
-                  value={filteredDate}
-                  onChange={(e) => setFilteredDate(e.target.value)}
-                  style={{ width: '100%', padding: '10px', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div className="collaborators-list">
-                {loadingCollaborators ? (
-                  <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>⏳ Chargement des données...</p>
-                ) : collaborators.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>Aucun collaborateur enregistré</p>
-                ) : (
-                  <div>
-                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
-                      <strong>{getFilteredCollaborators().length}</strong> collaborateur(s) 
-                      {filteredDate && ` pour le ${filteredDate}`}
-                    </p>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#667eea', color: 'white' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Matricule</th>
-                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Nom et Prénoms</th>
-                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Date d'insertion</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getFilteredCollaborators().map((collab, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #eee', backgroundColor: idx % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                            <td style={{ padding: '12px', textAlign: 'left' }}>{collab['Matricule'] || '-'}</td>
-                            <td style={{ padding: '12px', textAlign: 'left' }}>{collab['Nom et Prénoms'] || '-'}</td>
-                            <td style={{ padding: '12px', textAlign: 'left' }}>{collab["Date d'insertion"] || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Panneau Collaborateurs dans Navbar */}
           {showCollaborators && (
             <div className="collaborators-panel">
@@ -1275,13 +1257,35 @@ setTimeout(() => {
                   style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
               </div>
               
-              <div className="form-group" style={{ marginBottom: '15px' }}>
-                <label>Filtrer par date:</label>
+              <div className="form-group" style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px' }}>Filtrer par date d'intégration:</label>
                 <input 
                   type="date" 
                   value={filteredDate}
                   onChange={(e) => setFilteredDate(e.target.value)}
-                  style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px' }}>Filtrer par matricule:</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: CN01..."
+                  value={filteredMatricule}
+                  onChange={(e) => setFilteredMatricule(e.target.value)}
+                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '15px' }}>
+                <label style={{ fontSize: '12px' }}>Filtrer par fonction:</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Développeur..."
+                  value={filteredFonction}
+                  onChange={(e) => setFilteredFonction(e.target.value)}
+                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
                 />
               </div>
 
@@ -1300,21 +1304,24 @@ setTimeout(() => {
                       borderLeft: '4px solid #667eea',
                       borderRadius: '4px'
                     }}>
-                      <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>
+                      <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', fontSize: '12px' }}>
                         {collab['Nom et Prénoms'] || 'N/A'}
                       </p>
-                      <p style={{ margin: '0 0 3px 0', fontSize: '12px', color: '#666' }}>
+                      <p style={{ margin: '0 0 3px 0', fontSize: '11px', color: '#666' }}>
                         📋 {collab['Matricule'] || '-'}
                       </p>
+                      <p style={{ margin: '0 0 3px 0', fontSize: '11px', color: '#666' }}>
+                        💼 {collab['Fonction'] || '-'}
+                      </p>
                       <p style={{ margin: '0', fontSize: '11px', color: '#999' }}>
-                        📅 {collab["Date d'insertion"] || '-'}
+                        📅 Date d'intégration: {collab["Date d'intégration"] || '-'}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>
-                  Aucun collaborateur pour cette date
+                  Aucun collaborateur correspondant aux filtres
                 </p>
               )}
             </div>

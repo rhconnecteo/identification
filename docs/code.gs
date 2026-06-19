@@ -355,7 +355,7 @@ function testConnection() {
 }
 
 /* =====================================================
-   6) sendEmailAPI(userData)
+   7) sendEmailAPI(userData)
    Envoie un email HTML au collaborateur avec TOUTES ses infos
    Email depuis: rhbiconnecteo@gmail.com
 ===================================================== */
