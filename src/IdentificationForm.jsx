@@ -4,7 +4,7 @@ import './IdentificationForm.css';
 // Constants moved outside to prevent recreation on each render
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxz8BDxh5Nin3FoHUQNGR4RA53XFfuX57XzhlwQfVnmuS3nGBcoaTNG4eMaggLS_eyo5A/exec";
 const ETHNICITIES = ['Antakarana','Mahafaly','Bara','Antemoro','Tsimihety','Vezo','Antefasy','Tanala','Antanosy','Antambahoaka','Bezanozano','Antesaka','Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Autre'];
-const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
+const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'STAGIAIRE', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
 const LANGUAGES = ['Anglais', 'Français', 'Espagnol', 'Chinois', 'Autre'];
 const LEVELS = ['Débutant', 'Intermédiaire', 'Avancé', 'Maîtrise'];
