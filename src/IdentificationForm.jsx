@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './IdentificationForm.css';
 
 // Constants moved outside to prevent recreation on each render
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxz8BDxh5Nin3FoHUQNGR4RA53XFfuX57XzhlwQfVnmuS3nGBcoaTNG4eMaggLS_eyo5A/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxW85ue9mpdwfTOCpBhnwmmyzbMaOe7W_xnAMl_W7UeDFDwpVUtAEy7J_teD8sTg76x/exec";
 const ETHNICITIES = ['Antakarana','Mahafaly','Bara','Antemoro','Tsimihety','Vezo','Antefasy','Tanala','Antanosy','Antambahoaka','Bezanozano','Antesaka','Betsileo', 'Sihanaka', 'Merina', 'Sakalava', 'Betsimisaraka', 'Antandroy', 'Autre'];
 const CONTRACTS = ['CDI', 'CDD', 'INT MDJ', 'Stagiaire', 'Consultant'];
 const DIPLOMAS = ['BAC', 'BAC+2', 'BAC+3', 'Master 1', 'Master 2'];
@@ -33,10 +33,10 @@ const FormField = ({ label, name, type = 'text', value, onChange, error, require
   );
 };
 
-const FormSelect = ({ label, name, value, onChange, options, error, required = false }) => (
+const FormSelect = ({ label, name, value, onChange, options, error, required = false, ...props }) => (
   <div className="form-group">
     <label>{label} {required && <span className="required-asterisk">*</span>}</label>
-    <select name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''}>
+    <select name={name} value={value} onChange={onChange} className={error ? 'input-error' : ''} {...props}>
       <option value="">-- Sélectionner --</option>
       {options.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
     </select>
@@ -84,9 +84,11 @@ const IdentificationForm = () => {
       contrat: '',
       dateIntegration: '',
       adresse: '',
+      lieuRamassage: '',
       genre: 'M',
       fonction: '',
       rattachement: '',
+      manager: '',
       dateNaissance: '',
       lieuNaissance: '',
       numeroCIN: '',
@@ -95,6 +97,7 @@ const IdentificationForm = () => {
       nationalite: 'Malagasy',
       ethenie: '',
       contactPersonnel: '',
+      numeroRamassage: '',
       numeroMvola: '',
       nomPersonneUrgence: '',
       numeroUrgence: '',
@@ -172,7 +175,7 @@ const IdentificationForm = () => {
     return options;
   };
 
-  const fetchPosteOptionsFallback = () => {
+  const fetchPosteOptionsFallback = useCallback(() => {
     const callbackName = 'jsonpPosteFallback_' + Date.now();
     window[callbackName] = (data) => {
       const fallbackOptions = buildPosteOptionsFromUsers(data);
@@ -198,9 +201,9 @@ const IdentificationForm = () => {
       delete window[callbackName];
     };
     document.head.appendChild(scriptTag);
-  };
+  }, []);
 
-  const fetchPosteOptions = async () => {
+  const fetchPosteOptions = useCallback(async () => {
     setPosteLoading(true);
     setPosteError('');
     const callbackName = 'jsonpPoste_' + Date.now();
@@ -243,7 +246,7 @@ const IdentificationForm = () => {
     }, 8000);
 
     document.head.appendChild(scriptTag);
-  };
+  }, [fetchPosteOptionsFallback]);
 
   const isEmailValid = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const isMadagascarPhoneNumber = (value) => {
@@ -342,7 +345,7 @@ const IdentificationForm = () => {
     return isDiplomeInfoComplete() || isLanguesInfoComplete(); // Formations et ancien poste sont optionnels, pas bloquants
   };
 
-  const fetchCollaborators = async () => {
+  const fetchCollaborators = useCallback(async () => {
     setLoadingCollaborators(true);
     try {
       // Données de test avec les bons champs
@@ -430,7 +433,7 @@ const IdentificationForm = () => {
       setCollaborators([]);
       setLoadingCollaborators(false);
     }
-  };
+  }, []);
 
   const handleShowCollaborators = () => {
     if (!showCollaborators) {
@@ -467,12 +470,19 @@ const IdentificationForm = () => {
     ? posteOptions.filter(option => option.fonction.toLowerCase().includes(fonctionQuery.toLowerCase()))
     : posteOptions;
 
+  const managerOptions = formData.fonction
+    ? posteOptions
+        .filter(option => option.fonction.toLowerCase() === formData.fonction.toLowerCase())
+        .map(option => option.manager)
+        .filter((manager, index, array) => manager && array.indexOf(manager) === index)
+    : [];
+
   useEffect(() => {
     Promise.resolve().then(() => {
       fetchCollaborators();
       fetchPosteOptions();
     });
-  }, []);
+  }, [fetchCollaborators, fetchPosteOptions]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -509,9 +519,11 @@ const IdentificationForm = () => {
 
     if (!formData.fonction) newErrors.fonction = 'Fonction obligatoire';
     if (!formData.rattachement) newErrors.rattachement = 'Rattachement obligatoire';
+    if (!formData.manager) newErrors.manager = 'Manager obligatoire'; 
     
     // Numéro Mvola: optionnel mais doit commencer par 3 s'il est fourni
     if (formData.numeroMvola && !isMadagascarPhoneNumber(formData.numeroMvola)) newErrors.numeroMvola = 'Doit commencer par 3 (9 chiffres)';
+    if (formData.numeroRamassage && !isMadagascarPhoneNumber(formData.numeroRamassage)) newErrors.numeroRamassage = 'Doit commencer par 3 (9 chiffres)';
     
     // Numéro CNAPS: optionnel, accepte n'importe quelle valeur
     // Pas de validation pour CNAPS
@@ -577,6 +589,10 @@ const IdentificationForm = () => {
         if (value && !isMadagascarPhoneNumber(value)) error = 'Doit commencer par 3 (9 chiffres)';
         break;
 
+      case 'numeroRamassage':
+        if (value && !isMadagascarPhoneNumber(value)) error = 'Doit commencer par 3 (9 chiffres)';
+        break;
+
       case 'numeroCnaps':
         // CNAPS est optionnel, accepter n'importe quelle valeur
         // Pas d'erreur
@@ -601,6 +617,10 @@ const IdentificationForm = () => {
 
       case 'rattachement':
         if (!value) error = 'Rattachement obligatoire';
+        break;
+
+      case 'manager':
+        if (!value) error = 'Manager obligatoire';
         break;
 
       case 'contrat':
@@ -654,7 +674,8 @@ const IdentificationForm = () => {
     setFormData(prev => ({
       ...prev,
       fonction: value,
-      rattachement: match ? match.rattachement : ''
+      rattachement: match ? match.rattachement : '',
+      manager: ''
     }));
     setFonctionQuery(value);
     clearWarningMessage();
@@ -837,15 +858,18 @@ const IdentificationForm = () => {
         'Genre': formData.genre,
         'Fonction': formData.fonction,
         'Rattachement': formData.rattachement,
+        'Manager': formData.manager,
         'Date de naissance': formData.dateNaissance,
         'Lieu de naissance': formData.lieuNaissance,
         'Adresse': formData.adresse,
+        'Lieu de ramassage': formData.lieuRamassage,
         'Numéro CIN': formData.numeroCIN,
         'Date de délivrance': formData.dateDelivrance,
         'Lieu de délivrance': formData.lieuDelivrance,
         'Nationalité': formData.nationalite,
         'Ethenie': formData.ethenie,
         'Contact personnel': formData.contactPersonnel,
+        'Numéro de ramassage': formData.numeroRamassage,
         'Numéro Mvola': formData.numeroMvola,
         'Nom de personne à contact au cas d\'urgence': formData.nomPersonneUrgence,
         'Numéro d\'urgence': formData.numeroUrgence,
@@ -929,9 +953,11 @@ const IdentificationForm = () => {
         contrat: '',
         dateIntegration: '',
         adresse: '',
+        lieuRamassage: '',
         genre: 'M',
         fonction: '',
         rattachement: '',
+        manager: '',
         dateNaissance: '',
         lieuNaissance: '',
         numeroCIN: '',
@@ -940,6 +966,7 @@ const IdentificationForm = () => {
         nationalite: 'Malagasy',
         ethenie: '',
         contactPersonnel: '',
+        numeroRamassage: '',
         numeroMvola: '',
         nomPersonneUrgence: '',
         numeroUrgence: '',
@@ -1016,6 +1043,9 @@ const IdentificationForm = () => {
                 <FormSelect label="Genre" name="genre" value={formData.genre} onChange={handleInputChange} options={['M', 'F']} />
               </div>
               <div className="form-row">
+                <FormField label="Lieu de ramassage" name="lieuRamassage" value={formData.lieuRamassage} onChange={handleInputChange} error={errors.lieuRamassage} />
+              </div>
+              <div className="form-row">
                 <FormField label="Date de naissance" name="dateNaissance" type="date" value={formData.dateNaissance} onChange={handleInputChange} error={errors.dateNaissance} required />
                 <FormField label="Lieu de naissance" name="lieuNaissance" value={formData.lieuNaissance} onChange={handleInputChange} error={errors.lieuNaissance} required />
               </div>
@@ -1039,6 +1069,9 @@ const IdentificationForm = () => {
               <div className="form-row">
                 <FormField label="Contact personnel" name="contactPersonnel" value={formData.contactPersonnel} onChange={handleInputChange} error={errors.contactPersonnel} required />
                 <FormField label="Numéro Mvola" name="numeroMvola" value={formData.numeroMvola} onChange={handleInputChange} error={errors.numeroMvola} />
+              </div>
+              <div className="form-row">
+                <FormField label="Numéro de ramassage" name="numeroRamassage" value={formData.numeroRamassage} onChange={handleInputChange} error={errors.numeroRamassage} />
               </div>
               <FormField label="Email personnel" name="emailPersonnel" type="email" value={formData.emailPersonnel} onChange={handleInputChange} error={errors.emailPersonnel} required />
               <div className="emergency-section">
@@ -1076,6 +1109,17 @@ const IdentificationForm = () => {
                   error={errors.rattachement}
                   required
                   disabled
+                />
+              </div>
+              <div className="form-row">
+                <FormSelect
+                  label="Manager"
+                  name="manager"
+                  value={formData.manager}
+                  onChange={handleInputChange}
+                  error={errors.manager}
+                  required
+                  options={managerOptions}
                 />
               </div>
               {posteLoading && <p className="info-text">Chargement des postes...</p>}

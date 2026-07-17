@@ -23,71 +23,76 @@ const COLUMN_MAP = {
   'Genre': 5,
   'Fonction': 6,
   'Rattachement': 7,
-  'Date de naissance': 8,
-  'Lieu de naissance': 9,
-  'Adresse': 10,
-  'Numéro CIN': 11,
-  'Date de délivrance': 12,
-  'Lieu de délivrance': 13,
-  'Nationalité': 14,
-  'Ethenie': 15,
-  'Contact personnel': 16,
-  'Numéro Mvola': 17,
-  'Nom de personne à contact au cas d\'urgence': 18,
-  'Numéro d\'urgence': 19,
-  'Email personnel': 20,
-  'Situation familiale': 21,
-  'Nom et prénoms de conjoint': 22,
-  'Date de mariage': 23,
-  // Enfants 1-9 (colonnes 24-41)
-  'Nom enfant 1': 24,
-  'date de naissance 1': 25,
-  'Nom enfant 2': 26,
-  'date de naissance 2': 27,
-  'Nom enfant 3': 28,
-  'date de naissance 3': 29,
-  'Nom enfant 4': 30,
-  'date de naissance 4': 31,
-  'Nom enfant 5': 32,
-  'date de naissance 5': 33,
-  'Nom enfant 6': 34,
-  'date de naissance 6': 35,
-  'Nom enfant 7': 36,
-  'date de naissance 7': 37,
-  'Nom enfant 8': 38,
-  'date de naissance 8': 39,
-  'Nom enfant 9': 40,
-  'date de naissance 9': 41,
-  // CNAPS + Vaccin (colonnes 42-43)
-  'Numéro Cnaps': 42,
-  'Vaccin COVID 19': 43,
-  // Diplômes 1-4 (colonnes 44-51)
-  'Diplomes obtenues 1': 44,
-  'Domaine d\'étude 1': 45,
-  'Diplomes obtenues 2': 46,
-  'Domaine d\'étude 2': 47,
-  'Diplomes obtenues 3': 48,
-  'Domaine d\'étude 3': 49,
-  'Autres': 50,
-  'Domaine d\'étude 4': 51,
-  // Formations 1-3 (colonnes 52-54) - BA, BB, BC
-  'Formation 1': 52,
-  'Formation 2': 53,
-  'Formation 3': 54,
-  // Ancien poste chez Connecteo 1-2 (colonnes 55-56) - BD, BE
-  'ancien poste chez connecteo 1': 55,
-  'ancien poste chez connecteo 2': 56,
-  // Langues 1-3 (colonnes 57-62) - BF..BK
-  'Langues 1': 57,
-  'Niveau 1': 58,
-  'Langues 2': 59,
-  'Niveau 2': 60,
-  'Autres langues': 61,
-  'Niveau 3': 62,
-  // Dialecte + Niveau (colonnes 63-64) - BL-BM
-  'Dialecte': 63,
-  'Niveau': 64,
+  'Manager': 8,
+  'Date de naissance': 9,
+  'Lieu de naissance': 10,
+  'Adresse': 11,
+  'Lieu de ramassage': 12,
+  'Numéro CIN': 13,
+  'Date de délivrance': 14,
+  'Lieu de délivrance': 15,
+  'Nationalité': 16,
+  'Ethenie': 17,
+  'Contact personnel': 18,
+  'Numéro de ramassage': 19,
+  'Numéro Mvola': 20,
+  'Nom de personne à contact au cas d\'urgence': 21,
+  'Numéro d\'urgence': 22,
+  'Email personnel': 23,
+  'Situation familiale': 24,
+  'Nom et prénoms de conjoint': 25,
+  'Date de mariage': 26,
+  // Enfants 1-9 (colonnes 27-44)
+  'Nom enfant 1': 27,
+  'date de naissance 1': 28,
+  'Nom enfant 2': 29,
+  'date de naissance 2': 30,
+  'Nom enfant 3': 31,
+  'date de naissance 3': 32,
+  'Nom enfant 4': 33,
+  'date de naissance 4': 34,
+  'Nom enfant 5': 35,
+  'date de naissance 5': 36,
+  'Nom enfant 6': 37,
+  'date de naissance 6': 38,
+  'Nom enfant 7': 39,
+  'date de naissance 7': 40,
+  'Nom enfant 8': 41,
+  'date de naissance 8': 42,
+  'Nom enfant 9': 43,
+  'date de naissance 9': 44,
+  // CNAPS + Vaccin (colonnes 45-46)
+  'Numéro Cnaps': 45,
+  'Vaccin COVID 19': 46,
+  // Diplômes 1-4 (colonnes 47-54)
+  'Diplomes obtenues 1': 47,
+  'Domaine d\'étude 1': 48,
+  'Diplomes obtenues 2': 49,
+  'Domaine d\'étude 2': 50,
+  'Diplomes obtenues 3': 51,
+  'Domaine d\'étude 3': 52,
+  'Autres': 53,
+  'Domaine d\'étude 4': 54,
+  // Formations 1-3 (colonnes 55-57) - BC, BD, BE
+  'Formation 1': 55,
+  'Formation 2': 56,
+  'Formation 3': 57,
+  // Ancien poste chez Connecteo 1-2 (colonnes 58-59) - BF, BG
+  'ancien poste chez connecteo 1': 58,
+  'ancien poste chez connecteo 2': 59,
+  // Langues 1-3 (colonnes 60-65) - BH..BM
+  'Langues 1': 60,
+  'Niveau 1': 61,
+  'Langues 2': 62,
+  'Niveau 2': 63,
+  'Autres langues': 64,
+  'Niveau 3': 65,
+  // Dialecte + Niveau (colonnes 66-67) - BN-BO
+  'Dialecte': 66,
+  'Niveau': 67,
 };
+
+const TOTAL_COLUMNS = Math.max.apply(null, Object.values(COLUMN_MAP)) + 1;
 
 /* =====================================================
    1) ENTRY POINT : doGet()
@@ -260,13 +265,14 @@ function getPosteOptionsAPI() {
     for (let i = 1; i < data.length; i++) {
       const fonction = (data[i][0] || '').toString().trim();
       const rattachement = (data[i][1] || '').toString().trim();
+      const manager = (data[i][2] || '').toString().trim();
       if (!fonction) continue;
 
-      const key = fonction + '||' + rattachement;
+      const key = fonction + '||' + rattachement + '||' + manager;
       if (seen[key]) continue;
       seen[key] = true;
 
-      result.push({ fonction, rattachement });
+      result.push({ fonction, rattachement, manager });
     }
 
     return result;
@@ -291,7 +297,7 @@ function saveUserAPI(user) {
     const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
     
     // Construire une ligne vide avec le bon nombre de colonnes
-    const newRow = new Array(65); // 65 colonnes au total (indices 0..64)
+    const newRow = new Array(TOTAL_COLUMNS);
 
     // Remplir avec les données du formulaire en utilisant le COLUMN_MAP
     for (let fieldName in user) {
@@ -425,9 +431,11 @@ Nom: ${userData['Nom et Prénoms'] || '-'}
 Genre: ${userData['Genre'] || '-'}
 Fonction: ${userData['Fonction'] || '-'}
 Rattachement: ${userData['Rattachement'] || '-'}
+Manager: ${userData['Manager'] || '-'}
 Date de naissance: ${userData['Date de naissance'] || '-'}
 Lieu de naissance: ${userData['Lieu de naissance'] || '-'}
 Adresse: ${userData['Adresse'] || '-'}
+Lieu de ramassage: ${userData['Lieu de ramassage'] || '-'}
 Nationalité: ${userData['Nationalité'] || '-'}
 Ethnie: ${userData['Ethenie'] || '-'}
 Dialecte/Niveau: ${userData['Dialecte'] || '-'} / ${userData['Niveau'] || '-'}
@@ -440,6 +448,7 @@ Date de délivrance: ${userData['Date de délivrance'] || '-'}
 CONTACT
 ------------------------------------
 Contact personnel: ${userData['Contact personnel'] || '-'}
+Numéro de ramassage: ${userData['Numéro de ramassage'] || '-'}
 Numéro Mvola: ${userData['Numéro Mvola'] || '-'}
 Email: ${userData['Email personnel'] || '-'}
 
