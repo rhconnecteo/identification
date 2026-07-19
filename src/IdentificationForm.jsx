@@ -60,7 +60,7 @@ const TabButton = ({ activeTab, id, label, onClick, isComplete }) => {
   );
 };
 
-const IdentificationForm = () => {
+const IdentificationForm = ({ onLogout }) => {
 
   const [activeTab, setActiveTab] = useState('perso');
   const [navbarGlow, setNavbarGlow] = useState(false);
@@ -1022,6 +1022,9 @@ const IdentificationForm = () => {
             <TabButton activeTab={activeTab} id="famille" label="👨‍👩‍👧‍👦 Situation Familiale" onClick={() => { triggerFireGlow(); setActiveTab('famille'); }} isComplete={isFamilyInfoComplete()} />
             <TabButton activeTab={activeTab} id="diplome" label="🎓 Formation" onClick={() => { triggerFireGlow(); setActiveTab('diplome'); }} isComplete={isFormationComplete()} />
           </nav>
+          <button type="button" className="sidebar-btn-submit sidebar-btn-logout" onClick={() => { triggerFireGlow(); onLogout?.(); }} title="Se déconnecter">
+            <span className="btn-emoji">🚪</span><span className="btn-text"> Déconnexion</span>
+          </button>
         </div>
       </aside>
 
