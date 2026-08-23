@@ -24,72 +24,73 @@ const COLUMN_MAP = {
   'Fonction': 6,
   'Rattachement': 7,
   'Manager': 8,
-  'Date de naissance': 9,
-  'Lieu de naissance': 10,
-  'Adresse': 11,
-  'Lieu de ramassage': 12,
-  'Numéro CIN': 13,
-  'Date de délivrance': 14,
-  'Lieu de délivrance': 15,
-  'Nationalité': 16,
-  'Ethenie': 17,
-  'Contact personnel': 18,
-  'Numéro de ramassage': 19,
-  'Numéro Mvola': 20,
-  'Nom de personne à contact au cas d\'urgence': 21,
-  'Numéro d\'urgence': 22,
-  'Email personnel': 23,
-  'Situation familiale': 24,
-  'Nom et prénoms de conjoint': 25,
-  'Date de mariage': 26,
-  // Enfants 1-9 (colonnes 27-44)
-  'Nom enfant 1': 27,
-  'date de naissance 1': 28,
-  'Nom enfant 2': 29,
-  'date de naissance 2': 30,
-  'Nom enfant 3': 31,
-  'date de naissance 3': 32,
-  'Nom enfant 4': 33,
-  'date de naissance 4': 34,
-  'Nom enfant 5': 35,
-  'date de naissance 5': 36,
-  'Nom enfant 6': 37,
-  'date de naissance 6': 38,
-  'Nom enfant 7': 39,
-  'date de naissance 7': 40,
-  'Nom enfant 8': 41,
-  'date de naissance 8': 42,
-  'Nom enfant 9': 43,
-  'date de naissance 9': 44,
+  'Motif de recrutement': 9,
+  'FPR': 10,
+  'Date de naissance': 11,
+  'Lieu de naissance': 12,
+  'Adresse': 13,
+  'Lieu de ramassage': 14,
+  'Numéro CIN': 15,
+  'Date de délivrance': 16,
+  'Lieu de délivrance': 17,
+  'Nationalité': 18,
+  'Ethenie': 19,
+  'Contact personnel': 20,
+  'Numéro de ramassage': 21,
+  'Numéro Mvola': 22,
+  'Nom de personne à contact au cas d\'urgence': 23,
+  'Numéro d\'urgence': 24,
+  'Email personnel': 25,
+  'Situation familiale': 26,
+  'Nom et prénoms de conjoint': 27,
+  'Date de mariage': 28,
+  'Nom enfant 1': 29,
+  'date de naissance 1': 30,
+  'Nom enfant 2': 31,
+  'date de naissance 2': 32,
+  'Nom enfant 3': 33,
+  'date de naissance 3': 34,
+  'Nom enfant 4': 35,
+  'date de naissance 4': 36,
+  'Nom enfant 5': 37,
+  'date de naissance 5': 38,
+  'Nom enfant 6': 39,
+  'date de naissance 6': 40,
+  'Nom enfant 7': 41,
+  'date de naissance 7': 42,
+  'Nom enfant 8': 43,
+  'date de naissance 8': 44,
+  'Nom enfant 9': 45,
+  'date de naissance 9': 46,
   // CNAPS + Vaccin (colonnes 45-46)
-  'Numéro Cnaps': 45,
-  'Vaccin COVID 19': 46,
+  'Numéro Cnaps': 47,
+  'Vaccin COVID 19': 48,
   // Diplômes 1-4 (colonnes 47-54)
-  'Diplomes obtenues 1': 47,
-  'Domaine d\'étude 1': 48,
-  'Diplomes obtenues 2': 49,
-  'Domaine d\'étude 2': 50,
-  'Diplomes obtenues 3': 51,
-  'Domaine d\'étude 3': 52,
-  'Autres': 53,
-  'Domaine d\'étude 4': 54,
+  'Diplomes obtenues 1': 49,
+  'Domaine d\'étude 1': 50,
+  'Diplomes obtenues 2': 51,
+  'Domaine d\'étude 2': 52,
+  'Diplomes obtenues 3': 53,
+  'Domaine d\'étude 3': 54,
+  'Autres': 55,
+  'Domaine d\'étude 4': 56,
   // Formations 1-3 (colonnes 55-57) - BC, BD, BE
-  'Formation 1': 55,
-  'Formation 2': 56,
-  'Formation 3': 57,
+  'Formation 1': 57,
+  'Formation 2': 58,
+  'Formation 3': 59,
   // Ancien poste chez Connecteo 1-2 (colonnes 58-59) - BF, BG
-  'ancien poste chez connecteo 1': 58,
-  'ancien poste chez connecteo 2': 59,
+  'ancien poste chez connecteo 1': 60,
+  'ancien poste chez connecteo 2': 61,
   // Langues 1-3 (colonnes 60-65) - BH..BM
-  'Langues 1': 60,
-  'Niveau 1': 61,
-  'Langues 2': 62,
-  'Niveau 2': 63,
-  'Autres langues': 64,
-  'Niveau 3': 65,
+  'Langues 1': 62,
+  'Niveau 1': 63,
+  'Langues 2': 64,
+  'Niveau 2': 65,
+  'Autres langues': 66,
+  'Niveau 3': 67,
   // Dialecte + Niveau (colonnes 66-67) - BN-BO
-  'Dialecte': 66,
-  'Niveau': 67,
+  'Dialecte': 68,
+  'Niveau': 69,
 };
 
 const TOTAL_COLUMNS = Math.max.apply(null, Object.values(COLUMN_MAP)) + 1;
@@ -135,6 +136,26 @@ function doGet(e) {
           return outputJSON({ 
             success: false,
             error: "Erreur de parsing JSON: " + parseError.toString()
+          }, callback);
+        }
+
+      case "updateCollaborator":
+        if (!e.parameter.data) {
+          return outputJSON({ error: "Paramètre data manquant" }, callback);
+        }
+
+        try {
+          const collaborator = JSON.parse(decodeURIComponent(e.parameter.data));
+          updateCollaboratorAPI(collaborator);
+
+          return outputJSON({
+            success: true,
+            message: "✓ Collaborateur mis à jour avec succès"
+          }, callback);
+        } catch (parseError) {
+          return outputJSON({
+            success: false,
+            error: "Erreur de mise à jour: " + parseError.toString()
           }, callback);
         }
 
@@ -329,6 +350,31 @@ function saveUserAPI(user) {
     Logger.log("✓ Ligne ajoutée - Matricule: " + user['Matricule']);
   } catch (error) {
     throw new Error("Erreur saveUserAPI: " + error.toString());
+  }
+}
+
+function updateCollaboratorAPI(collaborator) {
+  try {
+    const row = Number(collaborator.row);
+    const motif = (collaborator['Motif de recrutement'] || '').toString().trim();
+    const fpr = (collaborator['FPR'] || '').toString().trim();
+
+    if (!Number.isInteger(row) || row < 2) {
+      throw new Error("Ligne collaborateur invalide");
+    }
+    if (['Remplacement', 'Rajout'].indexOf(motif) === -1) {
+      throw new Error("Le motif de recrutement est obligatoire");
+    }
+
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    if (row > sh.getLastRow()) {
+      throw new Error("Collaborateur introuvable");
+    }
+
+    sh.getRange(row, COLUMN_MAP['Motif de recrutement'] + 1).setValue(motif);
+    sh.getRange(row, COLUMN_MAP['FPR'] + 1).setValue(fpr);
+  } catch (error) {
+    throw new Error("Erreur updateCollaboratorAPI: " + error.toString());
   }
 }
 

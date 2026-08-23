@@ -44,13 +44,13 @@ const FormSelect = ({ label, name, value, onChange, options, error, required = f
   </div>
 );
 
-const TabButton = ({ activeTab, id, label, onClick, isComplete }) => {
+const TabButton = ({ activeTab, id, label, onClick, isComplete, className = '' }) => {
   const [icon, ...textParts] = label.split(' ');
   const text = textParts.join(' ');
   return (
     <button
       type="button"
-      className={`tab-button ${activeTab === id ? 'active' : ''} ${isComplete ? 'tab-complete' : ''}`}
+      className={`tab-button ${className} ${activeTab === id ? 'active' : ''} ${isComplete ? 'tab-complete' : ''}`}
       onClick={onClick}
       title={label}
     >
@@ -69,7 +69,10 @@ const IdentificationForm = ({ onLogout }) => {
   const [filteredDate, setFilteredDate] = useState('');
   const [filteredMatricule, setFilteredMatricule] = useState('');
   const [filteredFonction, setFilteredFonction] = useState('');
+  const [onlyMissingFpr, setOnlyMissingFpr] = useState(false);
   const [loadingCollaborators, setLoadingCollaborators] = useState(false);
+  const [savingCollaboratorRow, setSavingCollaboratorRow] = useState(null);
+  const [dirtyCollaboratorRows, setDirtyCollaboratorRows] = useState({});
   const [posteOptions, setPosteOptions] = useState([]);
   const [fonctionQuery, setFonctionQuery] = useState('');
   const [posteLoading, setPosteLoading] = useState(false);
@@ -442,8 +445,49 @@ const IdentificationForm = ({ onLogout }) => {
     setShowCollaborators(!showCollaborators);
   };
 
+  const handleCollaboratorChange = (row, field, value) => {
+    setDirtyCollaboratorRows(currentRows => ({ ...currentRows, [row]: true }));
+    setCollaborators(currentCollaborators => currentCollaborators.map(collaborator => (
+      collaborator.row === row ? { ...collaborator, [field]: value } : collaborator
+    )));
+  };
+
+  const handleSaveCollaborator = async (collaborator) => {
+    const motif = collaborator['Motif de recrutement'] || '';
+    if (!['Remplacement', 'Rajout'].includes(motif)) {
+      setMessage('⚠️ Sélectionnez un motif de recrutement');
+      return;
+    }
+
+    setSavingCollaboratorRow(collaborator.row);
+    try {
+      const data = {
+        row: collaborator.row,
+        'Motif de recrutement': motif,
+        FPR: collaborator.FPR || collaborator['FPR..'] || ''
+      };
+      const url = `${SCRIPT_URL}?action=updateCollaborator&data=${encodeURIComponent(JSON.stringify(data))}`;
+      await fetch(url, { method: 'GET', mode: 'no-cors' });
+      setDirtyCollaboratorRows(currentRows => ({ ...currentRows, [collaborator.row]: false }));
+      setMessage('✓ Informations du collaborateur enregistrées');
+    } catch (error) {
+      setMessage('✗ Erreur: ' + error.message);
+    } finally {
+      setSavingCollaboratorRow(null);
+    }
+  };
+
+  const isCollaboratorComplete = (collaborator) => {
+    const hasFpr = (collaborator.FPR || collaborator['FPR..'] || '').toString().trim();
+    const hasMotif = (collaborator['Motif de recrutement'] || '').toString().trim();
+    return hasFpr && hasMotif && !dirtyCollaboratorRows[collaborator.row];
+  };
+
   const getFilteredCollaborators = () => {
     return collaborators.filter(c => {
+      const fpr = c.FPR || c['FPR..'] || '';
+      if (onlyMissingFpr && fpr.toString().trim()) return false;
+
       // Filtre par date d'intégration
       if (filteredDate) {
         const dateIntegration = c["Date d'intégration"] || '';
@@ -1005,9 +1049,6 @@ const IdentificationForm = ({ onLogout }) => {
           <img src="/connecteo.png" alt="Connecteo Logo" className="sidebar-logo" />
           <h1 className="sidebar-title"><span className="title-icon">📋</span><span className="sidebar-title-text">Formulaire d'Identification</span></h1>
           <div className="sidebar-buttons">
-            <button type="button" className="sidebar-btn-submit" onClick={() => { triggerFireGlow(); handleShowCollaborators(); }} title="Voir les collaborateurs">
-              <span className="btn-emoji">👥</span><span className="btn-text"> Collaborateurs</span>
-            </button>
             <button type="button" className={`sidebar-btn-submit ${allFieldsComplete ? 'sidebar-btn-complete' : ''}`} onClick={(e) => { triggerFireGlow(); handleSubmit(e); }} disabled={loading}>
               <span className="btn-emoji">{loading ? '⏳' : '✓'}</span><span className="btn-text"> {loading ? 'Enregistrement...' : 'Enregistrer'}</span>
             </button>
@@ -1022,9 +1063,12 @@ const IdentificationForm = ({ onLogout }) => {
             <TabButton activeTab={activeTab} id="famille" label="👨‍👩‍👧‍👦 Situation Familiale" onClick={() => { triggerFireGlow(); setActiveTab('famille'); }} isComplete={isFamilyInfoComplete()} />
             <TabButton activeTab={activeTab} id="diplome" label="🎓 Formation" onClick={() => { triggerFireGlow(); setActiveTab('diplome'); }} isComplete={isFormationComplete()} />
           </nav>
-          <button type="button" className="sidebar-btn-submit sidebar-btn-logout" onClick={() => { triggerFireGlow(); onLogout?.(); }} title="Se déconnecter">
-            <span className="btn-emoji">🚪</span><span className="btn-text"> Déconnexion</span>
-          </button>
+          <div className="sidebar-bottom-actions">
+            <TabButton activeTab={activeTab} id="collaborateurs" label="👥 Collaborateurs" className="sidebar-collaborators-button" onClick={() => { triggerFireGlow(); setActiveTab('collaborateurs'); handleShowCollaborators(); }} />
+            <button type="button" className="sidebar-btn-submit sidebar-btn-logout" onClick={() => { triggerFireGlow(); onLogout?.(); }} title="Se déconnecter">
+              <span className="btn-emoji">🚪</span><span className="btn-text"> Déconnexion</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -1295,46 +1339,55 @@ const IdentificationForm = ({ onLogout }) => {
           )}
 
           {/* Panneau Collaborateurs dans Navbar */}
-          {showCollaborators && (
-            <div className="collaborators-panel">
+          {activeTab === 'collaborateurs' && (
+            <div className="tab-content collaborators-content">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0 }}>👥 Collaborateurs</h3>
                 <button 
-                  onClick={() => setShowCollaborators(false)}
+                  type="button"
+                  onClick={() => { setShowCollaborators(false); setActiveTab('perso'); }}
                   style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
               </div>
               
-              <div className="form-group" style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '12px' }}>Filtrer par date d'intégration:</label>
-                <input 
-                  type="date" 
-                  value={filteredDate}
-                  onChange={(e) => setFilteredDate(e.target.value)}
-                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
-                />
+              <div className="collaborator-filters">
+                <div className="collaborator-filter-field">
+                  <label>Date d'embauche</label>
+                  <input 
+                    type="date" 
+                    value={filteredDate}
+                    onChange={(e) => setFilteredDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="collaborator-filter-field">
+                  <label>Matricule</label>
+                  <input 
+                    type="text" 
+                    placeholder="Rechercher un matricule"
+                    value={filteredMatricule}
+                    onChange={(e) => setFilteredMatricule(e.target.value)}
+                  />
+                </div>
+
+                <div className="collaborator-filter-field">
+                  <label>Fonction</label>
+                  <input 
+                    type="text" 
+                    placeholder="Rechercher une fonction"
+                    value={filteredFonction}
+                    onChange={(e) => setFilteredFonction(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '12px' }}>Filtrer par matricule:</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: CN01..."
-                  value={filteredMatricule}
-                  onChange={(e) => setFilteredMatricule(e.target.value)}
-                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
+              <label className="collaborator-fpr-filter">
+                <input
+                  type="checkbox"
+                  checked={onlyMissingFpr}
+                  onChange={(e) => setOnlyMissingFpr(e.target.checked)}
                 />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '12px' }}>Filtrer par fonction:</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: Développeur..."
-                  value={filteredFonction}
-                  onChange={(e) => setFilteredFonction(e.target.value)}
-                  style={{ width: '100%', padding: '6px', boxSizing: 'border-box', fontSize: '12px' }}
-                />
-              </div>
+                Afficher uniquement les collaborateurs sans FPR
+              </label>
 
               {loadingCollaborators ? (
                 <p style={{ textAlign: 'center', color: '#666' }}>⏳ Chargement...</p>
@@ -1344,11 +1397,11 @@ const IdentificationForm = ({ onLogout }) => {
                     {getFilteredCollaborators().length} collaborateur(s) trouvé(s)
                   </p>
                   {getFilteredCollaborators().map((collab, idx) => (
-                    <div key={idx} style={{
+                    <div key={idx} className={`collaborator-row ${isCollaboratorComplete(collab) ? 'collaborator-row-complete' : ''}`} style={{
                       padding: '12px',
                       marginBottom: '10px',
-                      background: '#f5f5f5',
-                      borderLeft: '4px solid #667eea',
+                      background: isCollaboratorComplete(collab) ? '#ecfdf5' : '#f5f5f5',
+                      borderLeft: isCollaboratorComplete(collab) ? '4px solid #16a34a' : '4px solid #667eea',
                       borderRadius: '4px'
                     }}>
                       <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', fontSize: '12px' }}>
@@ -1360,9 +1413,48 @@ const IdentificationForm = ({ onLogout }) => {
                       <p style={{ margin: '0 0 3px 0', fontSize: '11px', color: '#666' }}>
                         💼 {collab['Fonction'] || '-'}
                       </p>
-                      <p style={{ margin: '0', fontSize: '11px', color: '#999' }}>
-                        📅 Date d'intégration: {collab["Date d'intégration"] || '-'}
+                      <p style={{ margin: '0 0 3px 0', fontSize: '11px', color: '#666' }}>
+                        🏢 Rattachement: {collab['Rattachement'] || '-'}
                       </p>
+                      <p style={{ margin: '0', fontSize: '11px', color: '#999' }}>
+                        📅 Date d'embauche: {collab["Date d'intégration"] || '-'}
+                      </p>
+                      <div className="collaborator-edit-fields">
+                        <label>
+                          Motif de remplacement / recrutement
+                          <select
+                            value={collab['Motif de recrutement'] || ''}
+                            onChange={(e) => handleCollaboratorChange(collab.row, 'Motif de recrutement', e.target.value)}
+                            disabled={isCollaboratorComplete(collab)}
+                          >
+                            <option value="">-- Sélectionner --</option>
+                            <option value="Remplacement">Remplacement</option>
+                            <option value="Rajout">Rajout</option>
+                          </select>
+                        </label>
+                        <label>
+                          FPR
+                          <input
+                            type="text"
+                            value={collab.FPR || collab['FPR..'] || ''}
+                            onChange={(e) => handleCollaboratorChange(collab.row, 'FPR', e.target.value)}
+                            placeholder="FPR"
+                            disabled={isCollaboratorComplete(collab)}
+                          />
+                        </label>
+                        {!isCollaboratorComplete(collab) ? (
+                          <button
+                            type="button"
+                            className="collaborator-save-button"
+                            onClick={() => handleSaveCollaborator(collab)}
+                            disabled={savingCollaboratorRow === collab.row}
+                          >
+                            {savingCollaboratorRow === collab.row ? '⏳ Enregistrement...' : '✓ Enregistrer J/K'}
+                          </button>
+                        ) : (
+                          <p className="collaborator-complete-message">✓ FPR et motif enregistrés</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
