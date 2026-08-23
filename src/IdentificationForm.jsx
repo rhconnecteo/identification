@@ -1449,7 +1449,7 @@ const IdentificationForm = ({ onLogout }) => {
                             onClick={() => handleSaveCollaborator(collab)}
                             disabled={savingCollaboratorRow === collab.row}
                           >
-                            {savingCollaboratorRow === collab.row ? '⏳ Enregistrement...' : '✓ Enregistrer J/K'}
+                            {savingCollaboratorRow === collab.row ? '⏳ Enregistrement...' : '✓ Enregistrer'}
                           </button>
                         ) : (
                           <p className="collaborator-complete-message">✓ FPR et motif enregistrés</p>
